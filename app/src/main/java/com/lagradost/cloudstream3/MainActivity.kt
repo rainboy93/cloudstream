@@ -120,7 +120,6 @@ import com.lagradost.cloudstream3.ui.settings.Globals.isLayout
 import com.lagradost.cloudstream3.ui.settings.Globals.updateTv
 import com.lagradost.cloudstream3.ui.settings.SettingsGeneral
 import com.lagradost.cloudstream3.ui.setup.HAS_DONE_SETUP_KEY
-import com.lagradost.cloudstream3.ui.setup.SetupFragmentExtensions
 import com.lagradost.cloudstream3.utils.ApkInstaller
 import com.lagradost.cloudstream3.utils.AppUtils.html
 import com.lagradost.cloudstream3.utils.AppUtils.isCastApiAvailable
@@ -148,7 +147,6 @@ import com.lagradost.cloudstream3.utils.DataStoreHelper
 import com.lagradost.cloudstream3.utils.DataStoreHelper.accounts
 import com.lagradost.cloudstream3.utils.DataStoreHelper.migrateResumeWatching
 import com.lagradost.cloudstream3.utils.Event
-import com.lagradost.cloudstream3.utils.InAppUpdater.Companion.runAutoUpdate
 import com.lagradost.cloudstream3.utils.SingleSelectionHelper.showBottomDialog
 import com.lagradost.cloudstream3.utils.UIHelper.changeStatusBarState
 import com.lagradost.cloudstream3.utils.UIHelper.checkWrite
@@ -1781,15 +1779,16 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener,
             if (getKey(HAS_DONE_SETUP_KEY, false) != true) {
                 navController.navigate(R.id.navigation_setup_language)
                 // If no plugins bring up extensions screen
-            } else if (PluginManager.getPluginsOnline().isEmpty()
-                && PluginManager.getPluginsLocal().isEmpty()
-//                && PREBUILT_REPOSITORIES.isNotEmpty()
-            ) {
-                navController.navigate(
-                    R.id.navigation_setup_extensions,
-                    SetupFragmentExtensions.newInstance(false)
-                )
             }
+//            else if (PluginManager.getPluginsOnline().isEmpty()
+//                && PluginManager.getPluginsLocal().isEmpty()
+////                && PREBUILT_REPOSITORIES.isNotEmpty()
+//            ) {
+//                navController.navigate(
+//                    R.id.navigation_setup_extensions,
+//                    SetupFragmentExtensions.newInstance(false)
+//                )
+//            }
         } catch (e: Exception) {
             logError(e)
         }
