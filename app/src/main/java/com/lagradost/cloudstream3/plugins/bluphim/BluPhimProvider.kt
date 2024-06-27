@@ -3,6 +3,7 @@ package com.lagradost.cloudstream3.plugins.bluphim
 import com.blankj.utilcode.util.LogUtils
 import com.lagradost.cloudstream3.HomePageResponse
 import com.lagradost.cloudstream3.LiveSearchResponse
+import com.lagradost.cloudstream3.LoadResponse
 import com.lagradost.cloudstream3.MainAPI
 import com.lagradost.cloudstream3.MainPageData
 import com.lagradost.cloudstream3.MainPageRequest
@@ -16,7 +17,7 @@ import org.jsoup.nodes.Element
 import org.jsoup.select.Evaluator
 
 class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
-    override var mainUrl = "https://bluphim.net/"
+    override var mainUrl = "https://bluphim.net"
     override var name = "Blu phim"
     override val supportedTypes = setOf(TvType.Movie)
 
@@ -59,6 +60,21 @@ class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
                 }
             } ?: listOf()
         return newHomePageResponse(request.name, homeItems)
+    }
+
+    override suspend fun load(url: String): LoadResponse? {
+        val document = app.get(url).document
+        val poster = document.selectFirst("poster") ?: return null
+        val img = poster.selectFirst(Evaluator.Class("adspruce-streamlink"))?.selectFirst("img")
+        val posterUrl = img?.attr("src")
+        val title = img?.attr("title")
+        val youtubeTrailer =
+            poster.selectFirst("btn-see btn btn-primary btn-download-link")?.attr("href")
+        val rating = document.select(Evaluator.Class("film-status")).lastOrNull()
+            ?.select("a")?.text()
+        val details = document.selectFirst(Evaluator.Class("detail"))
+
+        return super.load(url)
     }
 
     private fun Element.toSearchResponse(): LiveSearchResponse? {
