@@ -1752,9 +1752,9 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener,
 
         handleAppIntent(intent)
 
-        ioSafe {
-            runAutoUpdate()
-        }
+//        ioSafe {
+//            runAutoUpdate()
+//        }
 
         APIRepository.dubStatusActive = getApiDubstatusSettings()
 

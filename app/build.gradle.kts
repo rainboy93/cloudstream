@@ -236,6 +236,8 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.9.0")
     implementation("com.github.Blatzar:NiceHttp:0.4.11") // HTTP Lib
 
+    implementation("com.blankj:utilcodex:1.31.1")
+
     implementation(project(":library") {
         this.extra.set("isDebug", isLibraryDebug)
     })

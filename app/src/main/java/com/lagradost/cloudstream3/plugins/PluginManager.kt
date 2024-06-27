@@ -1,6 +1,9 @@
 package com.lagradost.cloudstream3.plugins
 
-import android.app.*
+import android.app.Activity
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
 import android.content.res.AssetManager
 import android.content.res.Resources
@@ -13,16 +16,23 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.fragment.app.FragmentActivity
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.google.gson.Gson
-import com.lagradost.cloudstream3.*
+import com.lagradost.cloudstream3.APIHolder
 import com.lagradost.cloudstream3.APIHolder.getApiProviderLangSettings
 import com.lagradost.cloudstream3.APIHolder.removePluginMapping
 import com.lagradost.cloudstream3.AcraApplication.Companion.getActivity
 import com.lagradost.cloudstream3.AcraApplication.Companion.getKey
-import com.lagradost.cloudstream3.AcraApplication.Companion.removeKey
 import com.lagradost.cloudstream3.AcraApplication.Companion.setKey
+import com.lagradost.cloudstream3.AllLanguagesName
+import com.lagradost.cloudstream3.AutoDownloadMode
 import com.lagradost.cloudstream3.CommonActivity.showToast
+import com.lagradost.cloudstream3.MainAPI
 import com.lagradost.cloudstream3.MainAPI.Companion.settingsForProvider
 import com.lagradost.cloudstream3.MainActivity.Companion.afterPluginsLoadedEvent
+import com.lagradost.cloudstream3.PROVIDER_STATUS_DOWN
+import com.lagradost.cloudstream3.PROVIDER_STATUS_OK
+import com.lagradost.cloudstream3.R
+import com.lagradost.cloudstream3.TvType
+import com.lagradost.cloudstream3.apmap
 import com.lagradost.cloudstream3.mvvm.debugPrint
 import com.lagradost.cloudstream3.mvvm.logError
 import com.lagradost.cloudstream3.mvvm.normalSafeApiCall
@@ -30,6 +40,7 @@ import com.lagradost.cloudstream3.plugins.RepositoryManager.ONLINE_PLUGINS_FOLDE
 import com.lagradost.cloudstream3.plugins.RepositoryManager.PREBUILT_REPOSITORIES
 import com.lagradost.cloudstream3.plugins.RepositoryManager.downloadPluginToFile
 import com.lagradost.cloudstream3.plugins.RepositoryManager.getRepoPlugins
+import com.lagradost.cloudstream3.plugins.bluphim.BluPhimPlugin
 import com.lagradost.cloudstream3.ui.result.UiText
 import com.lagradost.cloudstream3.ui.result.txt
 import com.lagradost.cloudstream3.ui.settings.extensions.REPOSITORIES_KEY
@@ -44,7 +55,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.File
 import java.io.InputStreamReader
-import java.util.*
 
 // Different keys for local and not since local can be removed at any time without app knowing, hence the local are getting rebuilt on every app start
 const val PLUGINS_KEY = "PLUGINS_KEY"
@@ -429,11 +439,13 @@ object PluginManager {
      **/
     fun loadAllLocalPlugins(context: Context, forceReload: Boolean) {
         val dir = File(LOCAL_PLUGINS_PATH)
-
+        loadFixedPlugins(context)
         if (!dir.exists()) {
             val res = dir.mkdirs()
             if (!res) {
                 Log.w(TAG, "Failed to create local directories")
+                loadedLocalPlugins = true
+                afterPluginsLoadedEvent.invoke(forceReload)
                 return
             }
         }
@@ -449,6 +461,22 @@ object PluginManager {
 
         loadedLocalPlugins = true
         afterPluginsLoadedEvent.invoke(forceReload)
+    }
+
+    private fun loadFixedPlugins(context: Context) {
+        listOf(BluPhimPlugin()).forEach {
+            if (!plugins.contains(it.provider.mainUrl)) {
+                loadFixedPlugin(context, it)
+            }
+        }
+    }
+
+    private fun loadFixedPlugin(context: Context, plugin: Plugin) {
+        plugins[plugin.provider.mainUrl] = plugin
+        urlPlugins[plugin.provider.mainUrl] = plugin
+        plugin.load(context)
+        Log.i(TAG, "Loaded plugin ${plugin.provider.name} successfully")
+        currentlyLoading = null
     }
 
     /**

@@ -2,23 +2,26 @@ package com.lagradost.cloudstream3.plugins
 
 import android.content.Context
 import android.content.res.Resources
-import kotlin.Throws
-import com.lagradost.cloudstream3.MainAPI
-import com.lagradost.cloudstream3.APIHolder
-import com.lagradost.cloudstream3.utils.ExtractorApi
-import com.lagradost.cloudstream3.utils.extractorApis
 import android.util.Log
 import com.fasterxml.jackson.annotation.JsonProperty
+import com.lagradost.cloudstream3.APIHolder
+import com.lagradost.cloudstream3.MainAPI
+import com.lagradost.cloudstream3.utils.ExtractorApi
+import com.lagradost.cloudstream3.utils.extractorApis
 
 const val PLUGIN_TAG = "PluginInstance"
 
 abstract class Plugin {
+
+    abstract val provider: MainAPI
+
     /**
      * Called when your Plugin is loaded
      * @param context Context
      */
     @Throws(Throwable::class)
     open fun load(context: Context) {
+        registerMainAPI(provider)
     }
 
     /**
@@ -55,10 +58,13 @@ abstract class Plugin {
     class Manifest {
         @JsonProperty("name")
         var name: String? = null
+
         @JsonProperty("pluginClassName")
         var pluginClassName: String? = null
+
         @JsonProperty("version")
         var version: Int? = null
+
         @JsonProperty("requiresResources")
         var requiresResources: Boolean = false
     }
