@@ -172,7 +172,7 @@ class PhimmoichillProvider : MainAPI() {
                     .substringBefore("');")
                 app.post(
                     // Not mainUrl
-                    url = "https://phimmoichills.net/pmplayer.php",
+                    url = "https://phimmoichillu.net/chillsplayer.php",
                     data = mapOf("qcao" to id),
                     referer = data,
                     headers = mapOf(
@@ -189,7 +189,8 @@ class PhimmoichillProvider : MainAPI() {
         listOf(
             Pair("https://so-trym.topphimmoi.org/hlspm/$key", "PMFAST"),
             Pair("https://dash.megacdn.xyz/hlspm/$key", "PMHLS"),
-            Pair("https://dash.megacdn.xyz/dast/$key/index.m3u8", "PMBK")
+//            Pair("https://dash.megacdn.xyz/dast/$key/index.m3u8", "PMBK"),
+            Pair("https://dash.motchills.net/raw/$key/index.m3u8", "PMBK"),
         ).apmap { (link, source) ->
             safeApiCall {
                 if (source == "PMBK") {

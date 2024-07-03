@@ -96,8 +96,8 @@ class RepoLinkGenerator(
         val currentSubsUrls = mutableSetOf<String>()    // makes all subs urls unique
         val currentSubsNames = mutableSetOf<String>()   // makes all subs names unique
 
-        val invalidateCache = unixTime - lastCachedTimestamp  > 60 * 20 // 20 minutes
-        if(invalidateCache){
+        val invalidateCache = unixTime - lastCachedTimestamp > 60 * 5 // 5 minutes
+        if (true) {
             currentLinkCache.clear()
             currentSubsCache.clear()
         }
