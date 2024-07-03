@@ -40,7 +40,6 @@ import com.lagradost.cloudstream3.plugins.RepositoryManager.ONLINE_PLUGINS_FOLDE
 import com.lagradost.cloudstream3.plugins.RepositoryManager.PREBUILT_REPOSITORIES
 import com.lagradost.cloudstream3.plugins.RepositoryManager.downloadPluginToFile
 import com.lagradost.cloudstream3.plugins.RepositoryManager.getRepoPlugins
-import com.lagradost.cloudstream3.plugins.bluphim.BluPhimPlugin
 import com.lagradost.cloudstream3.plugins.phimmoichill.PhimmoichillProviderPlugin
 import com.lagradost.cloudstream3.ui.result.UiText
 import com.lagradost.cloudstream3.ui.result.txt
@@ -465,7 +464,7 @@ object PluginManager {
     }
 
     private fun loadFixedPlugins(context: Context) {
-        listOf(PhimmoichillProviderPlugin(), BluPhimPlugin()).forEach {
+        listOf(PhimmoichillProviderPlugin() /*BluPhimPlugin()*/).forEach {
             if (!plugins.contains(it.provider.mainUrl)) {
                 loadFixedPlugin(context, it)
             }
