@@ -24,7 +24,7 @@
 \n%1$s -&gt; %2$s</string>
     <string name="filler" formatted="true">Bộ lọc</string>
     <string name="duration_format" formatted="true">%d phút</string>
-    <string name="app_name">CloudStream</string>
+    <string name="app_name">TV</string>
     <string name="play_with_app_name">Mở với CloudStream</string>
     <string name="title_home">Trang Chủ</string>
     <string name="title_search">Tìm Kiếm</string>
