@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "111116477460",
+    "project_id": "tv4e-f42d1",
+    "storage_bucket": "tv4e-f42d1.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:111116477460:android:5ddc029b00b670a12e7301",
+        "android_client_info": {
+          "package_name": "com.tv.prerelease.debug"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCpl2TfVtcUrw4rF96-4a3v6OoC0DLUg6s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:111116477460:android:5ddc029b00b670a12e7301",
+        "android_client_info": {
+          "package_name": "com.tv"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCpl2TfVtcUrw4rF96-4a3v6OoC0DLUg6s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

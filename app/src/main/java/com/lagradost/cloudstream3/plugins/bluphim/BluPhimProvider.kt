@@ -13,19 +13,22 @@ import com.lagradost.cloudstream3.MainPageRequest
 import com.lagradost.cloudstream3.SearchResponse
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.TvType
+import com.lagradost.cloudstream3.apmap
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.fixUrl
 import com.lagradost.cloudstream3.mainPageOf
+import com.lagradost.cloudstream3.mvvm.safeApiCall
 import com.lagradost.cloudstream3.newHomePageResponse
 import com.lagradost.cloudstream3.newMovieLoadResponse
 import com.lagradost.cloudstream3.newTvSeriesLoadResponse
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.Qualities
 import org.jsoup.nodes.Element
 import org.jsoup.select.Evaluator
 
 class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
     override var mainUrl = "https://bluphim.net"
-    override var name = "Blu phim"
+    override var name = "Blu Phim"
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
     override var lang = "vi"
@@ -62,9 +65,7 @@ class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
             .firstOrNull()
             ?.select(Evaluator.AttributeWithValueStarting("class", "item"))
             ?.mapNotNull {
-                it.toSearchResponse().also { response ->
-                    LogUtils.d(response)
-                }
+                it.toSearchResponse()
             } ?: listOf()
         return newHomePageResponse(request.name, homeItems)
     }
@@ -144,6 +145,61 @@ class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
+        val document = app.get(fixUrl(data)).document
+        val ref = document.selectFirst(Evaluator.Id("iframeStream"))?.attr("src") ?: ""
+        val key = ref.substringAfter("id=").substringBefore("&")
+        if (key.isNotBlank()) {
+            val token = app.post(
+                // Not mainUrl
+                url = "https://moviking.ohaha79xxx.site/geturl",
+                data = mapOf(
+                    "videoId" to key,
+                    "domain" to ref,
+                    "renderer" to "Apple",
+                    "id" to key
+                ),
+                referer = ref,
+                headers = mapOf(
+                    "X-Requested-With" to "XMLHttpRequest",
+                    "Content-Type" to "multipart/form-data;"
+                )
+            ).text.also { println("BLU $it") }
+
+            val token1 = token.substringBefore("&token2")
+            val token2 = token.substringAfter("&").substringAfter("&token3")
+            val token3 = token.substringAfterLast("&")
+
+            val subtitleDocument = app.get(
+                url = "https://cdn2.professional789xxx.site/streaming?id=$key&web=$mainUrl&$token1&$token2&$token3"
+            ).document
+            val subtitle = subtitleDocument.selectFirst(Evaluator.ContainsText("Vietnamese"))
+            LogUtils.d(subtitle)
+
+            listOf(
+                Pair("https://cdn.ohaha79xxx.site", "CDN"),
+                Pair("https://cdn.professional789xxx.site", "CDN2"),
+            ).apmap { (link, source) ->
+//                val cdnUrl =
+//                    "$link/streaming?id=$key&subId=&web=BluPhim.Net&$token1&$token2&$token3"
+//                val subtitleUrl = app.get(
+//                    url = cdnUrl,
+//                    referer = ref
+//                ).text.substringBefore("\"label\": \"Vietnamese\"").substringAfter("\"file\"")
+                safeApiCall {
+                    callback.invoke(
+                        ExtractorLink(
+                            source,
+                            source,
+                            "$link/segment/$key/?$token1&$token2&$token3",
+                            referer = "$mainUrl/",
+                            quality = Qualities.P1080.value,
+                            isM3u8 = true
+                        )
+                    )
+                }
+            }
+            return true
+        }
         return super.loadLinks(data, isCasting, subtitleCallback, callback)
     }
 

@@ -10,6 +10,7 @@ buildscript {
         classpath("org.jetbrains.dokka:dokka-gradle-plugin:1.9.10")
         // Universal build config
         classpath("com.codingfeline.buildkonfig:buildkonfig-gradle-plugin:0.15.1")
+        classpath("com.google.gms:google-services:4.4.2")
     }
 }
 

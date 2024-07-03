@@ -33,6 +33,7 @@ import androidx.core.view.isVisible
 import androidx.core.view.marginStart
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -56,6 +57,12 @@ import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.navigationrail.NavigationRailView
 import com.google.android.material.snackbar.Snackbar
 import com.google.common.collect.Comparators.min
+import com.google.firebase.Firebase
+import com.google.firebase.initialize
+import com.google.firebase.remoteconfig.FirebaseRemoteConfig
+import com.google.firebase.remoteconfig.get
+import com.google.firebase.remoteconfig.remoteConfig
+import com.google.firebase.remoteconfig.remoteConfigSettings
 import com.jaredrummler.android.colorpicker.ColorPickerDialogListener
 import com.lagradost.cloudstream3.APIHolder.allProviders
 import com.lagradost.cloudstream3.APIHolder.apis
@@ -98,6 +105,7 @@ import com.lagradost.cloudstream3.syncproviders.AccountManager.Companion.inAppAu
 import com.lagradost.cloudstream3.syncproviders.SyncAPI
 import com.lagradost.cloudstream3.ui.APIRepository
 import com.lagradost.cloudstream3.ui.SyncWatchType
+import com.lagradost.cloudstream3.ui.UpdateDialog
 import com.lagradost.cloudstream3.ui.WatchType
 import com.lagradost.cloudstream3.ui.download.DOWNLOAD_NAVIGATE_TO
 import com.lagradost.cloudstream3.ui.home.HomeViewModel
@@ -162,6 +170,8 @@ import com.lagradost.cloudstream3.utils.USER_SELECTED_HOMEPAGE_API
 import com.lagradost.nicehttp.Requests
 import com.lagradost.nicehttp.ResponseParser
 import com.lagradost.safefile.SafeFile
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.File
@@ -1149,6 +1159,7 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener,
         loadThemes(this)
         updateLocale()
         super.onCreate(savedInstanceState)
+        configFirebaseRemoteConfig { }
         try {
             if (isCastApiAvailable()) {
                 mSessionManager = CastContext.getSharedInstance(this).sessionManager
@@ -1400,7 +1411,7 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener,
             }
         }
 
-        observe(viewModel.watchStatus,::setWatchStatus)
+        observe(viewModel.watchStatus, ::setWatchStatus)
         observe(syncViewModel.userData, ::setUserData)
         observeNullable(viewModel.subscribeStatus, ::setSubscribeStatus)
 
@@ -1827,7 +1838,7 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener,
     }
 
     override fun onAuthenticationError() {
-            finish()
+        finish()
     }
 
     private var backPressedCallback: OnBackPressedCallback? = null
@@ -1860,6 +1871,53 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener,
             ).text.trim() == "ok"
         } catch (t: Throwable) {
             false
+        }
+    }
+
+    private fun configFirebaseRemoteConfig(onDone: () -> Unit) {
+        Firebase.initialize(this)
+        val remoteConfig: FirebaseRemoteConfig = Firebase.remoteConfig
+        val configSettings = remoteConfigSettings {
+            minimumFetchIntervalInSeconds = 3600
+        }
+        remoteConfig.run {
+            setConfigSettingsAsync(configSettings)
+            fetchAndActivate().addOnCompleteListener {
+                updateConfig()
+            }
+        }
+    }
+
+    private fun updateConfig() {
+        val remoteConfig = Firebase.remoteConfig
+        try {
+            val currentVersion = remoteConfig["current_version"].asString().ifBlank { "1.0.0" }
+            val blockOldVersion = remoteConfig["block_old_version"].asBoolean()
+            val blockMessage = remoteConfig["block_message"].asString()
+            val groupLink =
+                remoteConfig["group_link"].asString().ifBlank { "https://www.google.com" }
+            if (blockOldVersion && isOldVersion(currentVersion)) {
+                lifecycleScope.launch(Dispatchers.Main) {
+                    UpdateDialog().apply {
+                        arguments = UpdateDialog.paramsBuilder(blockMessage, groupLink)
+                        show(supportFragmentManager, "Update")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun isOldVersion(configVersion: String): Boolean {
+        try {
+            val currentVersion = BuildConfig.VERSION_NAME.replace("-PRE", "").split(".")
+            if (currentVersion[0].toInt() < configVersion[0].toInt()) return true
+            if (currentVersion[1].toInt() < configVersion[1].toInt()) return true
+            if (currentVersion[2].toInt() < configVersion[2].toInt()) return true
+            return false
+        } catch (e: Exception) {
+            return false
         }
     }
 }

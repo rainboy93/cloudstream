@@ -10,6 +10,9 @@ plugins {
     id("com.google.devtools.ksp")
     id("kotlin-android")
     id("org.jetbrains.dokka")
+    id("com.google.gms.google-services")
+    id("kotlin-kapt")
+    id("kotlin-parcelize")
 }
 
 val tmpFilePath = System.getProperty("user.home") + "/work/_temp/keystore/"
@@ -31,8 +34,9 @@ android {
         unitTests.isReturnDefaultValues = true
     }
 
-    viewBinding {
-        enable = true
+    buildFeatures {
+        viewBinding = true
+        dataBinding = true
     }
 
     /* disable this for now
@@ -155,6 +159,7 @@ repositories {
 }
 
 dependencies {
+    implementation("com.google.firebase:firebase-config:22.0.0")
     // Testing
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
@@ -237,6 +242,7 @@ dependencies {
     implementation("com.github.Blatzar:NiceHttp:0.4.11") // HTTP Lib
 
     implementation("com.blankj:utilcodex:1.31.1")
+    implementation("com.github.androidmads:QRGenerator:1.0.1")
 
     implementation(project(":library") {
         this.extra.set("isDebug", isLibraryDebug)
