@@ -42,6 +42,7 @@ import com.lagradost.cloudstream3.plugins.RepositoryManager.downloadPluginToFile
 import com.lagradost.cloudstream3.plugins.RepositoryManager.getRepoPlugins
 import com.lagradost.cloudstream3.plugins.bluphim.BluPhimPlugin
 import com.lagradost.cloudstream3.plugins.phimmoichill.PhimmoichillProviderPlugin
+import com.lagradost.cloudstream3.plugins.pidtap.PidtapPlugin
 import com.lagradost.cloudstream3.plugins.thuviencine.MotChillPlugin
 import com.lagradost.cloudstream3.ui.result.UiText
 import com.lagradost.cloudstream3.ui.result.txt
@@ -469,7 +470,8 @@ object PluginManager {
         listOf(
             PhimmoichillProviderPlugin(),
             MotChillPlugin(),
-            BluPhimPlugin()
+            BluPhimPlugin(),
+            PidtapPlugin()
         ).forEach {
             if (!plugins.contains(it.provider.mainUrl)) {
                 loadFixedPlugin(context, it)

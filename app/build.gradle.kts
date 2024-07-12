@@ -1,3 +1,4 @@
+import com.android.build.gradle.internal.api.BaseVariantOutputImpl
 import com.android.build.gradle.internal.cxx.configure.gradleLocalProperties
 import org.jetbrains.dokka.gradle.DokkaTask
 import org.jetbrains.kotlin.gradle.plugin.mpp.pm20.util.archivesName
@@ -65,8 +66,8 @@ android {
         minSdk = 21
         targetSdk = 33 /* Android 14 is Fu*ked
         ^ https://developer.android.com/about/versions/14/behavior-changes-14#safer-dynamic-code-loading*/
-        versionCode = 1
-        versionName = "1.0.1"
+        versionCode = 2
+        versionName = "1.0.2"
 
         resValue("string", "app_version", "${defaultConfig.versionName}${versionNameSuffix ?: ""}")
         resValue("string", "commit_hash", "git rev-parse --short HEAD".execute() ?: "")
@@ -146,12 +147,20 @@ android {
         abortOnError = false
         checkReleaseBuilds = false
     }
-    
+
     buildFeatures {
         buildConfig = true
     }
 
     namespace = "com.lagradost.cloudstream3"
+
+    applicationVariants.all {
+        val outputFileName = "TV4E_${defaultConfig.versionName}.apk"
+        outputs.all {
+            val output = this as? BaseVariantOutputImpl
+            output?.outputFileName = outputFileName
+        }
+    }
 }
 
 repositories {
@@ -207,7 +216,7 @@ dependencies {
     // PlayBack
     implementation("com.jaredrummler:colorpicker:1.1.0") // Subtitle Color Picker
     implementation("com.github.recloudstream:media-ffmpeg:1.1.0") // Custom FF-MPEG Lib for Audio Codecs
-    implementation("com.github.TeamNewPipe.NewPipeExtractor:NewPipeExtractor:6dc25f7b97") /* For Trailers
+    implementation("com.github.TeamNewPipe.NewPipeExtractor:NewPipeExtractor:0.24.1") /* For Trailers
     ^ Update to Latest Commits if Trailers Misbehave, github.com/TeamNewPipe/NewPipeExtractor/commits/dev */
     implementation("com.github.albfernandez:juniversalchardet:2.4.0") // Subtitle Decoding
 
@@ -220,7 +229,7 @@ dependencies {
     implementation("androidx.palette:palette-ktx:1.0.0") // Palette For Images -> Colors
     implementation("androidx.tvprovider:tvprovider:1.0.0")
     implementation("com.github.discord:OverlappingPanels:0.1.5") // Gestures
-    implementation ("androidx.biometric:biometric:1.2.0-alpha05") // Fingerprint Authentication
+    implementation("androidx.biometric:biometric:1.2.0-alpha05") // Fingerprint Authentication
     implementation("com.github.rubensousa:previewseekbar-media3:1.1.1.0") // SeekBar Preview
 
     // Extensions & Other Libs

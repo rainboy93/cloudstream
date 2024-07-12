@@ -112,27 +112,22 @@ class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
                         episode = episode,
                     )
                 } ?: listOf()
-            val newTvSeriesLoadResponse =
-                newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
-                    this.posterUrl = fixUrl(posterUrl)
-//                this.year = year
-                    this.plot = description
-                    this.tags = tags
-                    this.rating = rating?.toIntOrNull()
-                    addActors(actors)
-//                this.recommendations = recommendations
-                    addTrailer(youtubeTrailer)
-                }
-            newTvSeriesLoadResponse
-        } else {
-            newMovieLoadResponse(title, url, TvType.Movie, fixUrl(link)) {
+            newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
                 this.posterUrl = fixUrl(posterUrl)
 //                this.year = year
                 this.plot = description
                 this.tags = tags
                 this.rating = rating?.toIntOrNull()
                 addActors(actors)
-//                this.recommendations = recommendations
+                addTrailer(youtubeTrailer)
+            }
+        } else {
+            newMovieLoadResponse(title, url, TvType.Movie, fixUrl(link)) {
+                this.posterUrl = fixUrl(posterUrl)
+                this.plot = description
+                this.tags = tags
+                this.rating = rating?.toIntOrNull()
+                addActors(actors)
                 addTrailer(youtubeTrailer)
             }
         }
