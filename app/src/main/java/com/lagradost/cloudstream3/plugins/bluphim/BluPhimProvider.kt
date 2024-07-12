@@ -1,5 +1,6 @@
 package com.lagradost.cloudstream3.plugins.bluphim
 
+import android.net.Uri
 import com.blankj.utilcode.util.LogUtils
 import com.lagradost.cloudstream3.Episode
 import com.lagradost.cloudstream3.HomePageResponse
@@ -13,7 +14,6 @@ import com.lagradost.cloudstream3.MainPageRequest
 import com.lagradost.cloudstream3.SearchResponse
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.TvType
-import com.lagradost.cloudstream3.apmap
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.fixUrl
 import com.lagradost.cloudstream3.mainPageOf
@@ -23,6 +23,8 @@ import com.lagradost.cloudstream3.newMovieLoadResponse
 import com.lagradost.cloudstream3.newTvSeriesLoadResponse
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.Qualities
+import org.json.JSONArray
+import org.json.JSONObject
 import org.jsoup.nodes.Element
 import org.jsoup.select.Evaluator
 
@@ -33,18 +35,16 @@ class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
 
     override var lang = "vi"
 
-    // enable this when your provider has a main page
     override val hasMainPage = true
 
     override val mainPage: List<MainPageData> = mainPageOf(
-        MainPageData("PHIM MỚI", "phim-moi", false),
-        MainPageData("PHIM BỘ", "phim-bo", false),
-        MainPageData("PHIM LẺ", "phim-le", false),
-        MainPageData("PHIM CHIẾU RẠP", "phim-chieu-rap", false)
-
+        "$mainUrl/the-loai/phim-le-" to "Phim Lẻ",
+        "$mainUrl/the-loai/phim-bo-" to "Phim Bộ",
+        "$mainUrl/quoc-gia/han-quoc-" to "Phim Hàn Quốc",
+        "$mainUrl/trung-quoc-hong-kong-" to "Phim Trung Quốc",
+        "$mainUrl/quoc-gia/au-my-" to "Phim Âu Mỹ"
     )
 
-    // this function gets called when you search for something
     override suspend fun search(query: String): List<SearchResponse> {
         return app.get("${mainUrl}search?k=$query")
             .document
@@ -58,10 +58,9 @@ class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
             } ?: listOf()
     }
 
-    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
-        val homeItems = app.get("${mainUrl}/the-loai/${request.data}-$page")
-            .document
-            .getElementsByClass("list-films film-new")
+    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
+        val document = app.get(request.data + page).document
+        val homeItems = document.getElementsByClass("list-films film-new")
             .firstOrNull()
             ?.select(Evaluator.AttributeWithValueStarting("class", "item"))
             ?.mapNotNull {
@@ -145,18 +144,32 @@ class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val document = app.get(fixUrl(data)).document
-        val ref = document.selectFirst(Evaluator.Id("iframeStream"))?.attr("src") ?: ""
-        val key = ref.substringAfter("id=").substringBefore("&")
-        if (key.isNotBlank()) {
+        var document = app.get(fixUrl(data)).document
+        val ref =
+            document.selectFirst(Evaluator.Id("iframeStream"))?.attr("src")
+                ?: return super.loadLinks(
+                    data,
+                    isCasting,
+                    subtitleCallback,
+                    callback
+                )
+        val refUri = Uri.parse(ref)
+        document = app.get(
+            url = fixUrl(ref),
+            referer = "https://bluphim.net/"
+        ).document
+        val videoId = ref.substringAfter("id=").substringBefore("&")
+        val script = document.select(Evaluator.Tag("script")).map { it.data() }
+            .firstOrNull { it.contains("ShowLoading()") }
+        if (!script.isNullOrBlank()) {
             val token = app.post(
                 // Not mainUrl
-                url = "https://moviking.ohaha79xxx.site/geturl",
+                url = "${refUri.host}/geturl",
                 data = mapOf(
-                    "videoId" to key,
+                    "videoId" to videoId,
                     "domain" to ref,
                     "renderer" to "Apple",
-                    "id" to key
+                    "id" to videoId
                 ),
                 referer = ref,
                 headers = mapOf(
@@ -165,42 +178,66 @@ class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
                 )
             ).text.also { println("BLU $it") }
 
-            val token1 = token.substringBefore("&token2")
-            val token2 = token.substringAfter("&").substringAfter("&token3")
-            val token3 = token.substringAfterLast("&")
-
-            val subtitleDocument = app.get(
-                url = "https://cdn2.professional789xxx.site/streaming?id=$key&web=$mainUrl&$token1&$token2&$token3"
-            ).document
-            val subtitle = subtitleDocument.selectFirst(Evaluator.ContainsText("Vietnamese"))
-            LogUtils.d(subtitle)
-
-            listOf(
-                Pair("https://cdn.ohaha79xxx.site", "CDN"),
-                Pair("https://cdn.professional789xxx.site", "CDN2"),
-            ).apmap { (link, source) ->
-//                val cdnUrl =
-//                    "$link/streaming?id=$key&subId=&web=BluPhim.Net&$token1&$token2&$token3"
-//                val subtitleUrl = app.get(
-//                    url = cdnUrl,
-//                    referer = ref
-//                ).text.substringBefore("\"label\": \"Vietnamese\"").substringAfter("\"file\"")
-                safeApiCall {
-                    callback.invoke(
-                        ExtractorLink(
-                            source,
-                            source,
-                            "$link/segment/$key/?$token1&$token2&$token3",
-                            referer = "$mainUrl/",
-                            quality = Qualities.P1080.value,
-                            isM3u8 = true
+            val cdn = script.substringAfter("cdn = '").substringBefore("'")
+            val cdnUrl = "$cdn/streaming?id=$videoId&web=BluPhim.Net&$token&cdn=$cdn&lang=vi"
+            document = app.get(cdnUrl).document
+            val content = document.selectFirst(Evaluator.ContainsText(videoId))?.text()
+                ?: return super.loadLinks(data, isCasting, subtitleCallback, callback)
+            val videoUrl =
+                "${content.substringAfter("url = '").substringBefore("'")}$videoId/?$token"
+            try {
+                val subtitleTracks = "${content.substringAfter("").substringBefore("}]")}}]"
+                val jsonArray = JSONArray(subtitleTracks)
+                for (i in 0 until jsonArray.length()) {
+                    val jsonObject = JSONObject(jsonArray.get(i).toString())
+                    if (jsonObject.get("label") == "Vietnamese") {
+                        subtitleCallback.invoke(
+                            SubtitleFile(
+                                "vi",
+                                jsonObject.get("file").toString()
+                            )
                         )
-                    )
+                    }
                 }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-            return true
+
+            safeApiCall {
+                callback.invoke(
+                    ExtractorLink(
+                        "CDN",
+                        "CDN",
+                        videoUrl,
+                        referer = "$mainUrl/",
+                        quality = Qualities.P1080.value,
+                        isM3u8 = true
+                    )
+                )
+            }
+        } else {
+            val iframe = document.selectFirst(Evaluator.Tag("iframe"))
+                ?: return true
+            val cdnUrl = iframe.attr("src")
+            document = app.get(
+                url = cdnUrl,
+                referer = "${refUri.scheme}://${refUri.host}/"
+            ).document
+            val videoUrl = document.data().substringAfter("url = '").substringBefore("'")
+            safeApiCall {
+                callback.invoke(
+                    ExtractorLink(
+                        "CDN",
+                        "CDN",
+                        videoUrl,
+                        referer = "$mainUrl/",
+                        quality = Qualities.P1080.value,
+                        isM3u8 = true
+                    )
+                )
+            }
         }
-        return super.loadLinks(data, isCasting, subtitleCallback, callback)
+        return true
     }
 
     private fun Element.toSearchResponse(): LiveSearchResponse? {

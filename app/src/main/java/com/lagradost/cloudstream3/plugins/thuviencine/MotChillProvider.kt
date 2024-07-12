@@ -49,6 +49,9 @@ class MotChillProvider(val plugin: MotChillPlugin) : MainAPI() {
     override val mainPage: List<MainPageData> = mainPageOf(
         "$mainUrl/phim-le?countryId&categoryId&typeId=single&year=&orderBy=UpdateOn&page=" to "Phim lẻ",
         "$mainUrl/phim-bo?countryId&categoryId&typeId=series&year=&orderBy=UpdateOn&page=" to "Phim bộ",
+        "$mainUrl/quoc-gia/han-quoc?countryId=13&categoryId&typeId=&year=&orderBy=UpdateOn&page=" to "Phim Hàn Quốc",
+        "$mainUrl/quoc-gia/trung-quoc?countryId=1&categoryId&typeId=&year=&orderBy=UpdateOn&page=" to "Phim Trung Quốc",
+        "$mainUrl/quoc-gia/au-my?countryId=14&categoryId&typeId=&year=&orderBy=UpdateOn&page=" to "Phim Âu Mỹ"
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
