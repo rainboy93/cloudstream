@@ -32,7 +32,7 @@ import org.jsoup.nodes.Element
 import java.net.URLDecoder
 
 class PhimmoichillProvider : MainAPI() {
-    override var mainUrl = "https://phimmoichillu.net"
+    override var mainUrl = "https://phimmoichillv.net"
     override var name = "Phimmoichill"
     override val hasMainPage = true
     override var lang = "vi"
@@ -165,13 +165,13 @@ class PhimmoichillProvider : MainAPI() {
     ): Boolean {
         val document = app.get(data).document
 
-        val key = document.select("div#content script").mapNotNull { script ->
+        val key = document.select("div#content script").firstNotNullOf { script ->
             if (script.data().contains("filmInfo.episodeID =")) {
                 val id = script.data().substringAfter("filmInfo.episodeID = parseInt('")
                     .substringBefore("');")
                 app.post(
                     // Not mainUrl
-                    url = "https://phimmoichillu.net/chillsplayer.php",
+                    url = "$mainUrl/chillsplayer.php",
                     data = mapOf("qcao" to id),
                     referer = data,
                     headers = mapOf(
@@ -183,7 +183,7 @@ class PhimmoichillProvider : MainAPI() {
             } else {
                 null
             }
-        }.first()
+        }
 
         listOf(
             Pair("https://so-trym.topphimmoi.org/hlspm/$key", "PMFAST"),

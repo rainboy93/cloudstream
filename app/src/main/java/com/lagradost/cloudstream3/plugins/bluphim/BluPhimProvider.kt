@@ -157,27 +157,32 @@ class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
         val script = document.select(Evaluator.Tag("script")).map { it.data() }
             .firstOrNull { it.contains("ShowLoading()") }
         if (!script.isNullOrBlank()) {
-            val token = app.post(
-                // Not mainUrl
-                url = "${refUri.host}/geturl",
-                data = mapOf(
-                    "videoId" to videoId,
-                    "domain" to ref,
-                    "renderer" to "Apple",
-                    "id" to videoId
-                ),
-                referer = ref,
-                headers = mapOf(
-                    "X-Requested-With" to "XMLHttpRequest",
-                    "Content-Type" to "multipart/form-data;"
-                )
-            ).text.also { println("BLU $it") }
+            val token = try {
+                app.post(
+                    url = "${refUri.scheme}://${refUri.host}/geturl",
+                    data = mapOf(
+                        "videoId" to videoId,
+                        "domain" to ref,
+                        "renderer" to "Apple",
+                        "id" to videoId
+                    ),
+                    referer = ref,
+                    headers = mapOf(
+                        "X-Requested-With" to "XMLHttpRequest",
+                        "Content-Type" to "multipart/form-data;"
+                    )
+                ).text
+            } catch (e: Exception) {
+                ""
+            }
 
             val cdn = script.substringAfter("cdn = '").substringBefore("'")
             val cdnUrl = "$cdn/streaming?id=$videoId&web=BluPhim.Net&$token&cdn=$cdn&lang=vi"
-            document = app.get(cdnUrl).document
-            val content = document.selectFirst(Evaluator.ContainsText(videoId))?.text()
-                ?: return super.loadLinks(data, isCasting, subtitleCallback, callback)
+            document = app.get(
+                url = cdnUrl,
+                referer = ref,
+            ).document
+            val content = document.data()
             val videoUrl =
                 "${content.substringAfter("url = '").substringBefore("'")}$videoId/?$token"
             try {
