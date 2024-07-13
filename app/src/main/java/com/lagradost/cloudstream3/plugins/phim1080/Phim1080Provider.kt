@@ -1,7 +1,6 @@
 package com.lagradost.cloudstream3.plugins.bluphim
 
 import android.net.Uri
-import com.blankj.utilcode.util.LogUtils
 import com.lagradost.cloudstream3.Episode
 import com.lagradost.cloudstream3.HomePageResponse
 import com.lagradost.cloudstream3.LiveSearchResponse
@@ -28,9 +27,9 @@ import org.json.JSONObject
 import org.jsoup.nodes.Element
 import org.jsoup.select.Evaluator
 
-class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
-    override var mainUrl = "https://bluphim.net"
-    override var name = "Blu Phim"
+class Phim1080Provider(val plugin: Phim1080Plugin) : MainAPI() {
+    override var mainUrl = "https://phim1080.in"
+    override var name = "Phim1080"
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
     override var lang = "vi"
@@ -38,34 +37,28 @@ class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
     override val hasMainPage = true
 
     override val mainPage: List<MainPageData> = mainPageOf(
-        "$mainUrl/the-loai/phim-le-" to "Phim Lẻ",
-        "$mainUrl/the-loai/phim-bo-" to "Phim Bộ",
-        "$mainUrl/quoc-gia/han-quoc-" to "Phim Hàn Quốc",
-        "$mainUrl/trung-quoc-hong-kong-" to "Phim Trung Quốc",
-        "$mainUrl/quoc-gia/au-my-" to "Phim Âu Mỹ"
+        "$mainUrl/phim-le?page=" to "Phim Lẻ",
+        "$mainUrl/phim-bo?page=" to "Phim Bộ",
+        "$mainUrl/phim-han-quoc?page=" to "Phim Hàn Quốc",
+        "$mainUrl/phim-trung-quoc?page=" to "Phim Trung Quốc",
+        "$mainUrl/phim-my?page=" to "Phim Mỹ"
     )
 
     override suspend fun search(query: String): List<SearchResponse> {
-        return app.get("${mainUrl}/search?k=$query")
+        return app.get("${mainUrl}/tim-kiem/$query")
             .document
-            .getElementsByClass("list-films film-new")
-            .firstOrNull()
-            ?.select(Evaluator.AttributeWithValueStarting("class", "item"))
-            ?.mapNotNull {
-                it.toSearchResponse().also { response ->
-                    LogUtils.d(response)
-                }
-            } ?: listOf()
+            .select(Evaluator.Class("tray-item"))
+            .mapNotNull {
+                it.toSearchResponse()
+            }
     }
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val document = app.get(request.data + page).document
-        val homeItems = document.getElementsByClass("list-films film-new")
-            .firstOrNull()
-            ?.select(Evaluator.AttributeWithValueStarting("class", "item"))
-            ?.mapNotNull {
+        val homeItems = document.select(Evaluator.Class("tray-item"))
+            .mapNotNull {
                 it.toSearchResponse()
-            } ?: listOf()
+            }
         return newHomePageResponse(request.name, homeItems)
     }
 
@@ -236,16 +229,15 @@ class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
     }
 
     private fun Element.toSearchResponse(): LiveSearchResponse? {
-        val link = selectFirst(Evaluator.Attribute("href")) ?: return null
-        val name = link.selectFirst(Evaluator.Class("name"))?.selectFirst("span")?.text() ?: ""
-        val href = fixUrl(link.attr("href"))
-        val img = link.selectFirst("img")?.attr("src") ?: ""
+        val link = selectFirst(Evaluator.Tag("a"))?.attr("href") ?: ""
+        val name = selectFirst(Evaluator.Class("tray-item-title"))?.text() ?: ""
+        val img = selectFirst("img")?.attr("src") ?: ""
         return LiveSearchResponse(
             name = name,
-            url = href,
+            url = fixUrl(link),
             posterUrl = fixUrl(img),
             type = TvType.Movie,
-            apiName = "Blu phim"
+            apiName = "Phim1080"
         )
     }
 }
