@@ -29,7 +29,7 @@ import org.jsoup.nodes.Element
 import org.jsoup.select.Evaluator
 
 class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
-    override var mainUrl = "https://bluphim.net"
+    override var mainUrl = "https://bluphim.art"
     override var name = "Blu Phim"
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
