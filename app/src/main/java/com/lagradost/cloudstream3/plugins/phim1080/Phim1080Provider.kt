@@ -5,8 +5,6 @@ import com.lagradost.cloudstream3.Episode
 import com.lagradost.cloudstream3.HomePageResponse
 import com.lagradost.cloudstream3.LiveSearchResponse
 import com.lagradost.cloudstream3.LoadResponse
-import com.lagradost.cloudstream3.LoadResponse.Companion.addActors
-import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
 import com.lagradost.cloudstream3.MainAPI
 import com.lagradost.cloudstream3.MainPageData
 import com.lagradost.cloudstream3.MainPageRequest
@@ -65,33 +63,37 @@ class Phim1080Provider(val plugin: Phim1080Plugin) : MainAPI() {
     override suspend fun load(url: String): LoadResponse? {
         val document = app.get(url).document
 
-        val poster = document.selectFirst(Evaluator.Class("poster")) ?: return null
-        val img = poster.selectFirst(Evaluator.Class("adspruce-streamlink"))
-            ?.selectFirst(Evaluator.Tag("img"))
-        val posterUrl = img?.attr("src") ?: ""
-        val title = img?.attr("title") ?: ""
-        val youtubeTrailer =
-            poster.selectFirst(Evaluator.Class("btn-see btn btn-primary btn-download-link"))
-                ?.attr("href") ?: ""
-        val link = poster.selectFirst(Evaluator.Class("btn-see btn btn-danger btn-stream-link"))
-            ?.attr("href") ?: ""
-        val rating = document.select(Evaluator.Class("film-status")).lastOrNull()
-            ?.select("a")?.text()
-        val details = document.selectFirst(Evaluator.Class("detail"))
-        val description =
-            details?.selectFirst(Evaluator.Id("info-film"))?.selectFirst(Evaluator.Class("tab"))
-                ?.selectFirst(Evaluator.Tag("p"))?.text()
+        val info = document.selectFirst(Evaluator.Class("film-info")) ?: return null
+        val posterUrl = ""
+        val title = info.selectFirst(Evaluator.Class("film-info-title"))?.text() ?: ""
+        val link = ""
+        val description = info.selectFirst(Evaluator.Class("film-info-description"))
+            ?.selectFirst(Evaluator.Tag("p"))?.text() ?: ""
         val tvType = if (document.select(Evaluator.ContainsText("TV Series")).isNotEmpty()) {
             TvType.TvSeries
         } else {
             TvType.Movie
         }
-        val actors =
-            poster.selectFirst(Evaluator.Class("dienviendd"))?.allElements?.map { it.text() }
-        val tags = poster.selectFirst(Evaluator.Class("theloaidd"))?.allElements?.map { it.text() }
-        val year = poster.selectFirst(Evaluator.Class("dinfo"))?.run {
-
-        }
+        val tags =
+            info.selectFirst(Evaluator.Class("film-info-tag"))?.allElements?.map { it.text() }
+        val year = info.selectFirst(Evaluator.Class("film-content"))
+            ?.select(Evaluator.Class("film-info-genre"))
+            ?.firstOrNull {
+                it.text().contains("Năm")
+            }?.text()?.replace(Regex("[^0-9]"), "")?.trim()?.toIntOrNull()
+        val recommendations = document.select(Evaluator.Class("related-item"))
+            .map {
+                val relatedLink = it.selectFirst(Evaluator.Tag("a"))?.attr("href") ?: ""
+                val name = it.selectFirst(Evaluator.Class("related-item-title"))?.text() ?: ""
+                val img = it.selectFirst("img")?.attr("data-src") ?: ""
+                LiveSearchResponse(
+                    name = name,
+                    url = fixUrl(relatedLink),
+                    posterUrl = fixUrl(img),
+                    type = TvType.Movie,
+                    apiName = "Phim1080"
+                )
+            }
         return if (tvType == TvType.TvSeries) {
             val docEpisodes = app.get(fixUrl(link)).document
             val episodes = docEpisodes.select(Evaluator.Class("list-episode")).lastOrNull()
@@ -107,21 +109,18 @@ class Phim1080Provider(val plugin: Phim1080Plugin) : MainAPI() {
                 } ?: listOf()
             newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
                 this.posterUrl = fixUrl(posterUrl)
-//                this.year = year
+                this.year = year
                 this.plot = description
                 this.tags = tags
-                this.rating = rating?.toIntOrNull()
-                addActors(actors)
-                addTrailer(youtubeTrailer)
+                this.recommendations = recommendations
             }
         } else {
             newMovieLoadResponse(title, url, TvType.Movie, fixUrl(link)) {
                 this.posterUrl = fixUrl(posterUrl)
                 this.plot = description
                 this.tags = tags
-                this.rating = rating?.toIntOrNull()
-                addActors(actors)
-                addTrailer(youtubeTrailer)
+                this.year = year
+                this.recommendations = recommendations
             }
         }
     }
@@ -228,10 +227,10 @@ class Phim1080Provider(val plugin: Phim1080Plugin) : MainAPI() {
         return true
     }
 
-    private fun Element.toSearchResponse(): LiveSearchResponse? {
+    private fun Element.toSearchResponse(): LiveSearchResponse {
         val link = selectFirst(Evaluator.Tag("a"))?.attr("href") ?: ""
         val name = selectFirst(Evaluator.Class("tray-item-title"))?.text() ?: ""
-        val img = selectFirst("img")?.attr("src") ?: ""
+        val img = selectFirst("img")?.attr("data-src") ?: ""
         return LiveSearchResponse(
             name = name,
             url = fixUrl(link),
