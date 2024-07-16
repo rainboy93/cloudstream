@@ -1,4 +1,4 @@
-package com.lagradost.cloudstream3.plugins.thuviencine
+package com.lagradost.cloudstream3.plugins.motchill
 
 import com.lagradost.cloudstream3.MainAPI
 import com.lagradost.cloudstream3.plugins.Plugin

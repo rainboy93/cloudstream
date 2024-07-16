@@ -41,9 +41,10 @@ import com.lagradost.cloudstream3.plugins.RepositoryManager.PREBUILT_REPOSITORIE
 import com.lagradost.cloudstream3.plugins.RepositoryManager.downloadPluginToFile
 import com.lagradost.cloudstream3.plugins.RepositoryManager.getRepoPlugins
 import com.lagradost.cloudstream3.plugins.bluphim.BluPhimPlugin
+import com.lagradost.cloudstream3.plugins.motchill.MotChillPlugin
+import com.lagradost.cloudstream3.plugins.nguonc.NguonCPlugin
 import com.lagradost.cloudstream3.plugins.phimmoichill.PhimmoichillProviderPlugin
 import com.lagradost.cloudstream3.plugins.pidtap.PidtapPlugin
-import com.lagradost.cloudstream3.plugins.thuviencine.MotChillPlugin
 import com.lagradost.cloudstream3.plugins.twitch.TwitchPlugin
 import com.lagradost.cloudstream3.plugins.vebo.VeBoPlugin
 import com.lagradost.cloudstream3.ui.result.UiText
@@ -475,7 +476,8 @@ object PluginManager {
             BluPhimPlugin(),
             PidtapPlugin(),
             VeBoPlugin(),
-            TwitchPlugin()
+            TwitchPlugin(),
+            NguonCPlugin()
         ).forEach {
             if (!plugins.contains(it.provider.mainUrl)) {
                 loadFixedPlugin(context, it)

@@ -1,4 +1,4 @@
-package com.lagradost.cloudstream3.plugins.thuviencine
+package com.lagradost.cloudstream3.plugins.motchill
 
 import androidx.annotation.Keep
 import com.google.gson.annotations.SerializedName
