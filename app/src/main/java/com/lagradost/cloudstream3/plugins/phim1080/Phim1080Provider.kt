@@ -1,16 +1,18 @@
 package com.lagradost.cloudstream3.plugins.bluphim
 
-import android.net.Uri
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.Episode
 import com.lagradost.cloudstream3.HomePageResponse
 import com.lagradost.cloudstream3.LiveSearchResponse
 import com.lagradost.cloudstream3.LoadResponse
+import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
 import com.lagradost.cloudstream3.MainAPI
 import com.lagradost.cloudstream3.MainPageData
 import com.lagradost.cloudstream3.MainPageRequest
 import com.lagradost.cloudstream3.SearchResponse
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.TvType
+import com.lagradost.cloudstream3.apmap
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.fixUrl
 import com.lagradost.cloudstream3.mainPageOf
@@ -20,8 +22,6 @@ import com.lagradost.cloudstream3.newMovieLoadResponse
 import com.lagradost.cloudstream3.newTvSeriesLoadResponse
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.Qualities
-import org.json.JSONArray
-import org.json.JSONObject
 import org.jsoup.nodes.Element
 import org.jsoup.select.Evaluator
 
@@ -62,11 +62,23 @@ class Phim1080Provider(val plugin: Phim1080Plugin) : MainAPI() {
 
     override suspend fun load(url: String): LoadResponse? {
         val document = app.get(url).document
+        val fId = document.selectFirst(Evaluator.Class("container"))?.attr("data-id")
+        val filmInfo = app.get(
+            "$mainUrl/api/v2/films/$fId",
+            referer = url,
+            headers = mapOf(
+                "Content-Type" to "application/json",
+                "X-Requested-With" to "XMLHttpRequest"
+            )
+        ).parsedSafe<FilmInfo>()
 
         val info = document.selectFirst(Evaluator.Class("film-info")) ?: return null
-        val posterUrl = ""
+        val posterUrl = filmInfo?.thumbnail
+        val poster = filmInfo?.thumbnail
+        val background = filmInfo?.poster
         val title = info.selectFirst(Evaluator.Class("film-info-title"))?.text() ?: ""
-        val link = ""
+        val slug = filmInfo?.slug
+        val link = "$mainUrl/$slug"
         val description = info.selectFirst(Evaluator.Class("film-info-description"))
             ?.selectFirst(Evaluator.Tag("p"))?.text() ?: ""
         val tvType = if (document.select(Evaluator.ContainsText("TV Series")).isNotEmpty()) {
@@ -76,11 +88,9 @@ class Phim1080Provider(val plugin: Phim1080Plugin) : MainAPI() {
         }
         val tags =
             info.selectFirst(Evaluator.Class("film-info-tag"))?.allElements?.map { it.text() }
-        val year = info.selectFirst(Evaluator.Class("film-content"))
-            ?.select(Evaluator.Class("film-info-genre"))
-            ?.firstOrNull {
-                it.text().contains("Năm")
-            }?.text()?.replace(Regex("[^0-9]"), "")?.trim()?.toIntOrNull()
+        val year = filmInfo?.year
+        val trailerCode = filmInfo?.trailer?.original?.id
+        val trailer = "https://www.youtube.com/embed/$trailerCode"
         val recommendations = document.select(Evaluator.Class("related-item"))
             .map {
                 val relatedLink = it.selectFirst(Evaluator.Tag("a"))?.attr("href") ?: ""
@@ -95,31 +105,37 @@ class Phim1080Provider(val plugin: Phim1080Plugin) : MainAPI() {
                 )
             }
         return if (tvType == TvType.TvSeries) {
-            val docEpisodes = app.get(fixUrl(link)).document
-            val episodes = docEpisodes.select(Evaluator.Class("list-episode")).lastOrNull()
-                ?.select(Evaluator.Tag("a"))?.map {
-                    val href = it.attr("href")
-                    val episode = it.text().replace(Regex("[^0-9]"), "").trim().toIntOrNull()
-                    val name = "Episode $episode"
-                    Episode(
-                        data = href,
-                        name = name,
-                        episode = episode,
-                    )
-                } ?: listOf()
-            newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
-                this.posterUrl = fixUrl(posterUrl)
+            val epsInfo = app.get(
+                "$mainUrl/api/v2/films/$fId/episodes?sort=name",
+                referer = link,
+                headers = mapOf(
+                    "Content-Type" to "application/json",
+                    "X-Requested-With" to "XMLHttpRequest",
+                )
+            ).parsedSafe<MediaDetailEpisodes>()?.eps?.map { ep ->
+                Episode(
+                    data = fixUrl(ep.link.toString()),
+                    name = ep.detailname,
+                    episode = ep.episodeNumber,
+                )
+            } ?: listOf()
+            newTvSeriesLoadResponse(title, url, TvType.TvSeries, epsInfo) {
+                this.posterUrl = poster
+                this.backgroundPosterUrl = background
                 this.year = year
                 this.plot = description
                 this.tags = tags
+                addTrailer(trailer)
                 this.recommendations = recommendations
             }
         } else {
             newMovieLoadResponse(title, url, TvType.Movie, fixUrl(link)) {
-                this.posterUrl = fixUrl(posterUrl)
+                this.posterUrl = poster
+                this.backgroundPosterUrl = background
+                this.year = year
                 this.plot = description
                 this.tags = tags
-                this.year = year
+                addTrailer(trailer)
                 this.recommendations = recommendations
             }
         }
@@ -131,100 +147,83 @@ class Phim1080Provider(val plugin: Phim1080Plugin) : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        var document = app.get(fixUrl(data)).document
-        val ref =
-            document.selectFirst(Evaluator.Id("iframeStream"))?.attr("src")
-                ?: return super.loadLinks(
-                    data,
-                    isCasting,
-                    subtitleCallback,
-                    callback
-                )
-        val refUri = Uri.parse(ref)
-        document = app.get(
-            url = fixUrl(ref),
-            referer = "https://bluphim.net/"
-        ).document
-        val videoId = ref.substringAfter("id=").substringBefore("&")
-        val script = document.select(Evaluator.Tag("script")).map { it.data() }
-            .firstOrNull { it.contains("ShowLoading()") }
-        if (!script.isNullOrBlank()) {
-            val token = app.post(
-                // Not mainUrl
-                url = "${refUri.host}/geturl",
-                data = mapOf(
-                    "videoId" to videoId,
-                    "domain" to ref,
-                    "renderer" to "Apple",
-                    "id" to videoId
-                ),
-                referer = ref,
-                headers = mapOf(
-                    "X-Requested-With" to "XMLHttpRequest",
-                    "Content-Type" to "multipart/form-data;"
-                )
-            ).text.also { println("BLU $it") }
+        val document = app.get(data).document
+        val fId = document.select("div.container").attr("data-id")
+        val epId = document.select("div.container").attr("data-episode-id")
+        val doc = app.get(
+            "$mainUrl/api/v2/films/$fId/episodes/$epId",
+            referer = data,
+            headers = mapOf(
+                "Content-Type" to "application/json",
+                "cookie" to "phimnhanh=%3D",
+                "X-Requested-With" to "XMLHttpRequest"
+            )
+        )
 
-            val cdn = script.substringAfter("cdn = '").substringBefore("'")
-            val cdnUrl = "$cdn/streaming?id=$videoId&web=BluPhim.Net&$token&cdn=$cdn&lang=vi"
-            document = app.get(cdnUrl).document
-            val content = document.selectFirst(Evaluator.ContainsText(videoId))?.text()
-                ?: return super.loadLinks(data, isCasting, subtitleCallback, callback)
-            val videoUrl =
-                "${content.substringAfter("url = '").substringBefore("'")}$videoId/?$token"
-            try {
-                val subtitleTracks = "${content.substringAfter("").substringBefore("}]")}}]"
-                val jsonArray = JSONArray(subtitleTracks)
-                for (i in 0 until jsonArray.length()) {
-                    val jsonObject = JSONObject(jsonArray.get(i).toString())
-                    if (jsonObject.get("label") == "Vietnamese") {
-                        subtitleCallback.invoke(
-                            SubtitleFile(
-                                "vi",
-                                jsonObject.get("file").toString()
-                            )
-                        )
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-
-            safeApiCall {
-                callback.invoke(
-                    ExtractorLink(
-                        "CDN",
-                        "CDN",
-                        videoUrl,
-                        referer = "$mainUrl/",
-                        quality = Qualities.P1080.value,
-                        isM3u8 = true
-                    )
-                )
-            }
+        val optEncode = if (doc.text.indexOf("\"opt\":\"") != -1) {
+            doc.text.substringAfter("\"opt\":\"").substringBefore("\"}")
         } else {
-            val iframe = document.selectFirst(Evaluator.Tag("iframe"))
-                ?: return true
-            val cdnUrl = iframe.attr("src")
-            document = app.get(
-                url = cdnUrl,
-                referer = "${refUri.scheme}://${refUri.host}/"
-            ).document
-            val videoUrl = document.data().substringAfter("url = '").substringBefore("'")
+            ""
+        }
+        val opt = decodeString(optEncode as String, 69).replace("0uut$", "_")
+            .replace("index.m3u8", "3000k/hls/mixed.m3u8")
+        val hlsEncode = if (doc.text.indexOf(":{\"hls\":\"") != -1) {
+            doc.text.substringAfter(":{\"hls\":\"").substringBefore("\"},")
+        } else {
+            ""
+        }
+        val hls = decodeString(hlsEncode as String, 69)
+        val fb = if (doc.text.indexOf("\"fb\":[{\"src\":\"") != -1) {
+            doc.text.substringAfter("\"fb\":[{\"src\":\"").substringBefore("\",").replace("\\", "")
+        } else {
+            ""
+        }
+
+        listOfNotNull(
+            if (hls.contains(".m3u8")) {
+                Triple(hls, "HS", true)
+            } else null,
+            if (fb.contains(".mp4")) {
+                Triple(fb, "FB", false)
+            } else null,
+            if (opt.contains(".m3u8")) {
+                Triple(opt, "OP", true)
+            } else null,
+        ).apmap { (link, source, isM3u8) ->
             safeApiCall {
                 callback.invoke(
                     ExtractorLink(
-                        "CDN",
-                        "CDN",
-                        videoUrl,
-                        referer = "$mainUrl/",
-                        quality = Qualities.P1080.value,
-                        isM3u8 = true
+                        source,
+                        source,
+                        link,
+                        referer = data,
+                        quality = Qualities.Unknown.value,
+                        isM3u8,
                     )
                 )
             }
         }
+        val subId = doc.parsedSafe<Media>()?.subtitle?.vi
+        val isSubIdEmpty = subId.isNullOrBlank()
+        if (!isSubIdEmpty) {
+            subtitleCallback.invoke(
+                SubtitleFile(
+                    "Vietnamese",
+                    "$mainUrl/subtitle/$subId.vtt"
+                )
+            )
+        }
         return true
+    }
+
+    private fun decodeString(e: String, t: Int): String {
+        var a = ""
+        for (element in e) {
+            val r = element.code
+            val o = r xor t
+            a += o.toChar()
+        }
+        return a
     }
 
     private fun Element.toSearchResponse(): LiveSearchResponse {
@@ -239,4 +238,39 @@ class Phim1080Provider(val plugin: Phim1080Plugin) : MainAPI() {
             apiName = "Phim1080"
         )
     }
+
+    data class FilmInfo(
+        @JsonProperty("name") val name: String? = null,
+        @JsonProperty("poster") val poster: String? = null,
+        @JsonProperty("thumbnail") val thumbnail: String? = null,
+        @JsonProperty("slug") val slug: String? = null,
+        @JsonProperty("year") val year: Int? = null,
+        @JsonProperty("trailer") val trailer: TrailerInfo? = null,
+    )
+
+    data class TrailerInfo(
+        @JsonProperty("original") val original: TrailerKey? = null,
+    )
+
+    data class TrailerKey(
+        @JsonProperty("id") val id: String? = null,
+    )
+
+    data class MediaDetailEpisodes(
+        @JsonProperty("data") val eps: ArrayList<Episodes>? = arrayListOf(),
+    )
+
+    data class Episodes(
+        @JsonProperty("link") val link: String? = null,
+        @JsonProperty("detail_name") val detailname: String? = null,
+        @JsonProperty("name") val episodeNumber: Int? = null,
+    )
+
+    data class Media(
+        @JsonProperty("subtitle") val subtitle: SubInfo? = null,
+    )
+
+    data class SubInfo(
+        @JsonProperty("vi") val vi: String? = null,
+    )
 }
