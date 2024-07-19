@@ -148,7 +148,10 @@ class RepoLinkGenerator(
             },
             callback = { link ->
                 Log.d(TAG, "Loaded ExtractorLink: $link")
-                if (link.url.isNotEmpty() && !currentLinks.contains(link.url) && !currentLinkCache.contains(link)) {
+                if (link.url.isNotEmpty() && !currentLinks.contains(link.url) && !currentLinkCache.contains(
+                        link
+                    )
+                ) {
                     currentLinks.add(link.url)
 
                     if (allowedTypes.contains(link.type)) {
@@ -158,9 +161,32 @@ class RepoLinkGenerator(
                     currentLinkCache.add(link)
                     // linkCache[index] = currentLinkCache
                 }
+            },
+            subtitleFileCallback = { correctFile ->
+                if (correctFile.url.isNotEmpty() && !currentSubsUrls.contains(correctFile.url)) {
+                    currentSubsUrls.add(correctFile.url)
+
+                    // this part makes sure that all names are unique for UX
+                    var name = correctFile.name
+                    var count = 0
+                    while (currentSubsNames.contains(name)) {
+                        count++
+                        name = "${correctFile.name} $count"
+                    }
+
+                    currentSubsNames.add(name)
+                    val updatedFile = correctFile.copy(name = name)
+
+                    if (!currentSubsCache.contains(updatedFile)) {
+                        subtitleCallback(updatedFile)
+                        currentSubsCache.add(updatedFile)
+                        //subsCache[index] = currentSubsCache
+                    }
+                }
             }
         )
-        cache[Pair(current.apiName, current.id)] = Cache(currentLinkCache, currentSubsCache, unixTime)
+        cache[Pair(current.apiName, current.id)] =
+            Cache(currentLinkCache, currentSubsCache, unixTime)
 
         return result
     }

@@ -19,16 +19,20 @@ import com.lagradost.cloudstream3.syncproviders.SyncIdName
 import com.lagradost.cloudstream3.syncproviders.providers.SimklApi
 import com.lagradost.cloudstream3.ui.player.SubtitleData
 import com.lagradost.cloudstream3.ui.result.ResultViewModel2
-import com.lagradost.cloudstream3.utils.*
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
+import com.lagradost.cloudstream3.utils.Coroutines
 import com.lagradost.cloudstream3.utils.Coroutines.mainWork
 import com.lagradost.cloudstream3.utils.Coroutines.threadSafeListOf
+import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.nicehttp.RequestBodyTypes
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Base64
+import java.util.Date
+import java.util.EnumSet
+import java.util.Locale
 import kotlin.math.absoluteValue
 
 const val USER_AGENT =
@@ -121,7 +125,8 @@ object APIHolder {
 
     fun LoadResponse.getId(): Int {
         // this fixes an issue with outdated api as getLoadResponseIdFromUrl might be fucked
-        return (if (this is ResultViewModel2.LoadResponseFromSearch) this.id else null) ?: getLoadResponseIdFromUrl(url, apiName)
+        return (if (this is ResultViewModel2.LoadResponseFromSearch) this.id else null)
+            ?: getLoadResponseIdFromUrl(url, apiName)
     }
 
     /**
@@ -222,10 +227,15 @@ object APIHolder {
                 } ?: false
 
                 val matchingTypes = types?.any { it.name.equals(media.format, true) } == true
-                if(lessAccurate) matchingTitles || matchingTypes && matchingYears else matchingTitles && matchingTypes && matchingYears
+                if (lessAccurate) matchingTitles || matchingTypes && matchingYears else matchingTitles && matchingTypes && matchingYears
             } ?: return null
 
-            Tracker(res.idMal, res.id.toString(), res.coverImage?.extraLarge ?: res.coverImage?.large, res.bannerImage)
+            Tracker(
+                res.idMal,
+                res.id.toString(),
+                res.coverImage?.extraLarge ?: res.coverImage?.large,
+                res.bannerImage
+            )
         } catch (t: Throwable) {
             logError(t)
             null
@@ -705,6 +715,18 @@ abstract class MainAPI {
         throw NotImplementedError()
     }
 
+    /**Callback is fired once a link is found, will return true if method is executed successfully*/
+    @WorkerThread
+    open suspend fun loadLinks(
+        data: String,
+        isCasting: Boolean,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit,
+        subtitleFileCallback: (SubtitleData) -> Unit = {}
+    ): Boolean {
+        throw NotImplementedError()
+    }
+
     /** An okhttp interceptor for used in OkHttpDataSource */
     open fun getVideoInterceptor(extractorLink: ExtractorLink): Interceptor? {
         return null
@@ -866,6 +888,7 @@ enum class TvType(value: Int?) {
     Others(12),
     Music(13),
     AudioBook(14),
+
     /** Wont load the built in player, make your own interaction */
     CustomMedia(15),
 }
@@ -1253,13 +1276,15 @@ interface LoadResponse {
 
         fun LoadResponse.getImdbId(): String? {
             return normalSafeApiCall {
-                SimklApi.readIdFromString(this.syncData[simklIdPrefix])?.get(SimklApi.Companion.SyncServices.Imdb)
+                SimklApi.readIdFromString(this.syncData[simklIdPrefix])
+                    ?.get(SimklApi.Companion.SyncServices.Imdb)
             }
         }
 
         fun LoadResponse.getTMDbId(): String? {
             return normalSafeApiCall {
-                SimklApi.readIdFromString(this.syncData[simklIdPrefix])?.get(SimklApi.Companion.SyncServices.Tmdb)
+                SimklApi.readIdFromString(this.syncData[simklIdPrefix])
+                    ?.get(SimklApi.Companion.SyncServices.Tmdb)
             }
         }
 
@@ -1543,8 +1568,26 @@ data class TorrentLoadResponse(
         posterHeaders: Map<String, String>? = null,
         backgroundPosterUrl: String? = null,
     ) : this(
-        name, url, apiName, magnet, torrent, plot, type, posterUrl, year, rating, tags, duration, trailers,
-        recommendations, actors, comingSoon, syncData, posterHeaders, backgroundPosterUrl, null
+        name,
+        url,
+        apiName,
+        magnet,
+        torrent,
+        plot,
+        type,
+        posterUrl,
+        year,
+        rating,
+        tags,
+        duration,
+        trailers,
+        recommendations,
+        actors,
+        comingSoon,
+        syncData,
+        posterHeaders,
+        backgroundPosterUrl,
+        null
     )
 }
 
@@ -1596,7 +1639,8 @@ data class AnimeLoadResponse(
         return this.episodes.maxOf { (_, episodes) ->
             episodes.count { episodeData ->
                 // Prioritize display season as actual season may be something random to fit multiple seasons into one.
-                val episodeSeason = displayMap[episodeData.season] ?: episodeData.season ?: Int.MIN_VALUE
+                val episodeSeason =
+                    displayMap[episodeData.season] ?: episodeData.season ?: Int.MIN_VALUE
                 // Count all episodes from season 1 to below the current season.
                 episodeSeason in 1..<season
             }
@@ -1633,9 +1677,31 @@ data class AnimeLoadResponse(
         seasonNames: List<SeasonData>? = null,
         backgroundPosterUrl: String? = null,
     ) : this(
-        engName, japName, name, url, apiName, type, posterUrl, year, episodes, showStatus, plot, tags,
-        synonyms, rating, duration, trailers, recommendations, actors, comingSoon, syncData, posterHeaders,
-        nextAiring, seasonNames, backgroundPosterUrl, null
+        engName,
+        japName,
+        name,
+        url,
+        apiName,
+        type,
+        posterUrl,
+        year,
+        episodes,
+        showStatus,
+        plot,
+        tags,
+        synonyms,
+        rating,
+        duration,
+        trailers,
+        recommendations,
+        actors,
+        comingSoon,
+        syncData,
+        posterHeaders,
+        nextAiring,
+        seasonNames,
+        backgroundPosterUrl,
+        null
     )
 }
 
@@ -1767,7 +1833,7 @@ data class MovieLoadResponse(
         backgroundPosterUrl: String? = null,
     ) : this(
         name, url, apiName, type, dataUrl, posterUrl, year, plot, rating, tags, duration, trailers,
-        recommendations, actors, comingSoon, syncData, posterHeaders, backgroundPosterUrl,null
+        recommendations, actors, comingSoon, syncData, posterHeaders, backgroundPosterUrl, null
     )
 }
 
@@ -1910,7 +1976,8 @@ data class TvSeriesLoadResponse(
 
         return episodes.count { episodeData ->
             // Prioritize display season as actual season may be something random to fit multiple seasons into one.
-            val episodeSeason = displayMap[episodeData.season] ?: episodeData.season ?: Int.MIN_VALUE
+            val episodeSeason =
+                displayMap[episodeData.season] ?: episodeData.season ?: Int.MIN_VALUE
             // Count all episodes from season 1 to below the current season.
             episodeSeason in 1..<season
         } + episode
@@ -1943,9 +2010,28 @@ data class TvSeriesLoadResponse(
         seasonNames: List<SeasonData>? = null,
         backgroundPosterUrl: String? = null,
     ) : this(
-        name, url, apiName, type, episodes, posterUrl, year, plot, showStatus, rating, tags, duration,
-        trailers, recommendations, actors, comingSoon, syncData, posterHeaders, nextAiring, seasonNames,
-        backgroundPosterUrl, null
+        name,
+        url,
+        apiName,
+        type,
+        episodes,
+        posterUrl,
+        year,
+        plot,
+        showStatus,
+        rating,
+        tags,
+        duration,
+        trailers,
+        recommendations,
+        actors,
+        comingSoon,
+        syncData,
+        posterHeaders,
+        nextAiring,
+        seasonNames,
+        backgroundPosterUrl,
+        null
     )
 }
 
@@ -2009,6 +2095,7 @@ data class AniSearch(
                     @JsonProperty("extraLarge") var extraLarge: String? = null,
                     @JsonProperty("large") var large: String? = null,
                 )
+
                 data class Title(
                     @JsonProperty("romaji") var romaji: String? = null,
                     @JsonProperty("english") var english: String? = null,

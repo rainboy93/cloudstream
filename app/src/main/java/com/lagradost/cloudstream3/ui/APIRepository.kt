@@ -16,6 +16,7 @@ import com.lagradost.cloudstream3.fixUrl
 import com.lagradost.cloudstream3.mvvm.Resource
 import com.lagradost.cloudstream3.mvvm.logError
 import com.lagradost.cloudstream3.mvvm.safeApiCall
+import com.lagradost.cloudstream3.ui.player.SubtitleData
 import com.lagradost.cloudstream3.utils.Coroutines.threadSafeListOf
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import kotlinx.coroutines.CoroutineScope
@@ -183,10 +184,11 @@ class APIRepository(val api: MainAPI) {
         isCasting: Boolean,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit,
+        subtitleFileCallback: (SubtitleData) -> Unit = {},
     ): Boolean {
         if (isInvalidData(data)) return false // this makes providers cleaner
         return try {
-            api.loadLinks(data, isCasting, subtitleCallback, callback)
+            api.loadLinks(data, isCasting, subtitleCallback, callback, subtitleFileCallback)
         } catch (throwable: Throwable) {
             logError(throwable)
             return false

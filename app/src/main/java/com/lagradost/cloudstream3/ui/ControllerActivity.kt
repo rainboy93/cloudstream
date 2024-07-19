@@ -3,8 +3,14 @@ package com.lagradost.cloudstream3.ui
 import android.os.Bundle
 import android.util.Log
 import android.view.Menu
-import android.view.View.*
-import android.widget.*
+import android.view.View.GONE
+import android.view.View.INVISIBLE
+import android.view.View.VISIBLE
+import android.widget.AbsListView
+import android.widget.ArrayAdapter
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.ListView
 import androidx.appcompat.app.AlertDialog
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.json.JsonMapper
@@ -130,7 +136,8 @@ class SelectSourceController(val view: ImageView, val activity: ControllerActivi
                     } else {
                         val arrayAdapter =
                             ArrayAdapter<String>(view.context, R.layout.sort_bottom_single_choice)
-                        arrayAdapter.add(view.context.getString(R.string.no_subtitles))
+                        val noSub = view.context.getString(R.string.no_subtitles)
+                        arrayAdapter.add(noSub)
                         arrayAdapter.addAll(subTracks.mapNotNull { it.name })
 
                         subtitleList.choiceMode = AbsListView.CHOICE_MODE_SINGLE
@@ -138,9 +145,11 @@ class SelectSourceController(val view: ImageView, val activity: ControllerActivi
 
                         val currentTracks = remoteMediaClient?.mediaStatus?.activeTrackIds
 
-                        val subtitleIndex =
-                            if (currentTracks == null) 0 else subTracks.map { it.id }
-                                .indexOfFirst { currentTracks.contains(it) } + 1
+                        var subtitleIndex = if (currentTracks == null) {
+                            subTracks.indexOfFirst { it.name != noSub }
+                        } else subTracks.map { it.id }
+                            .indexOfFirst { currentTracks.contains(it) } + 1
+                        if (subtitleIndex == -1) subtitleIndex = 0
 
                         subtitleList.setSelection(subtitleIndex)
                         subtitleList.setItemChecked(subtitleIndex, true)

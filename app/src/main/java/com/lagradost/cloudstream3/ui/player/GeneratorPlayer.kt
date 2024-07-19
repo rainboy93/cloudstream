@@ -11,25 +11,42 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.*
+import android.widget.AbsListView
+import android.widget.ArrayAdapter
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.animation.addListener
 import androidx.core.content.ContextCompat
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.lifecycle.ViewModelProvider
-import androidx.preference.PreferenceManager
 import androidx.media3.common.Format.NO_VALUE
 import androidx.media3.common.MimeTypes
-import com.lagradost.cloudstream3.*
+import androidx.preference.PreferenceManager
 import com.lagradost.cloudstream3.APIHolder.getApiFromNameNull
+import com.lagradost.cloudstream3.AcraApplication
 import com.lagradost.cloudstream3.AcraApplication.Companion.setKey
 import com.lagradost.cloudstream3.CommonActivity.showToast
+import com.lagradost.cloudstream3.R
+import com.lagradost.cloudstream3.TvType
+import com.lagradost.cloudstream3.amap
 import com.lagradost.cloudstream3.databinding.DialogOnlineSubtitlesBinding
 import com.lagradost.cloudstream3.databinding.FragmentPlayerBinding
 import com.lagradost.cloudstream3.databinding.PlayerSelectSourceAndSubsBinding
 import com.lagradost.cloudstream3.databinding.PlayerSelectTracksBinding
-import com.lagradost.cloudstream3.mvvm.*
+import com.lagradost.cloudstream3.isAnimeOp
+import com.lagradost.cloudstream3.isEpisodeBased
+import com.lagradost.cloudstream3.isLiveStream
+import com.lagradost.cloudstream3.isMovieType
+import com.lagradost.cloudstream3.mvvm.Resource
+import com.lagradost.cloudstream3.mvvm.logError
+import com.lagradost.cloudstream3.mvvm.normalSafeApiCall
+import com.lagradost.cloudstream3.mvvm.observe
+import com.lagradost.cloudstream3.mvvm.observeNullable
+import com.lagradost.cloudstream3.sortSubs
 import com.lagradost.cloudstream3.subtitles.AbstractSubApi
 import com.lagradost.cloudstream3.subtitles.AbstractSubtitleEntities
 import com.lagradost.cloudstream3.syncproviders.AccountManager.Companion.subtitleProviders
@@ -38,16 +55,23 @@ import com.lagradost.cloudstream3.ui.player.CustomDecoder.Companion.updateForced
 import com.lagradost.cloudstream3.ui.player.PlayerSubtitleHelper.Companion.toSubtitleMimeType
 import com.lagradost.cloudstream3.ui.player.source_priority.QualityDataHelper
 import com.lagradost.cloudstream3.ui.player.source_priority.QualityProfileDialog
-import com.lagradost.cloudstream3.ui.result.*
-import com.lagradost.cloudstream3.ui.settings.Globals
+import com.lagradost.cloudstream3.ui.result.ResultEpisode
+import com.lagradost.cloudstream3.ui.result.ResultFragment
+import com.lagradost.cloudstream3.ui.result.SyncViewModel
+import com.lagradost.cloudstream3.ui.result.setText
+import com.lagradost.cloudstream3.ui.result.txt
 import com.lagradost.cloudstream3.ui.settings.Globals.EMULATOR
 import com.lagradost.cloudstream3.ui.settings.Globals.TV
 import com.lagradost.cloudstream3.ui.settings.Globals.isLayout
 import com.lagradost.cloudstream3.ui.subtitles.SUBTITLE_AUTO_SELECT_KEY
 import com.lagradost.cloudstream3.ui.subtitles.SubtitlesFragment.Companion.getAutoSelectLanguageISO639_1
-import com.lagradost.cloudstream3.utils.*
 import com.lagradost.cloudstream3.utils.Coroutines.ioSafe
 import com.lagradost.cloudstream3.utils.Coroutines.runOnMainThread
+import com.lagradost.cloudstream3.utils.DataStoreHelper
+import com.lagradost.cloudstream3.utils.EpisodeSkip
+import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.ExtractorUri
+import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.SingleSelectionHelper.showDialog
 import com.lagradost.cloudstream3.utils.SubtitleHelper.fromTwoLettersToLanguage
 import com.lagradost.cloudstream3.utils.SubtitleHelper.languages
@@ -58,7 +82,7 @@ import com.lagradost.cloudstream3.utils.UIHelper.popCurrentPage
 import com.lagradost.cloudstream3.utils.UIHelper.toPx
 import com.lagradost.safefile.SafeFile
 import kotlinx.coroutines.Job
-import java.util.*
+import java.util.Calendar
 import kotlin.math.abs
 
 class GeneratorPlayer : FullScreenPlayer() {
@@ -1482,6 +1506,10 @@ class GeneratorPlayer : FullScreenPlayer() {
             // Resulting in unselecting the downloaded subtitle
             if (set.lastOrNull()?.origin != SubtitleOrigin.DOWNLOADED_FILE) {
                 autoSelectSubtitles()
+            } else {
+                set.find { it.origin == SubtitleOrigin.DOWNLOADED_FILE }?.run {
+                    setSubtitles(this)
+                }
             }
         }
     }

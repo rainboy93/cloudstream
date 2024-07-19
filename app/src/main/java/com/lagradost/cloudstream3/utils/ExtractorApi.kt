@@ -20,6 +20,7 @@ import com.lagradost.cloudstream3.extractors.Cdnplayer
 import com.lagradost.cloudstream3.extractors.Chillx
 import com.lagradost.cloudstream3.extractors.CineGrabber
 import com.lagradost.cloudstream3.extractors.Cinestart
+import com.lagradost.cloudstream3.extractors.ContentX
 import com.lagradost.cloudstream3.extractors.DBfilm
 import com.lagradost.cloudstream3.extractors.Dailymotion
 import com.lagradost.cloudstream3.extractors.DatabaseGdrive
@@ -40,7 +41,9 @@ import com.lagradost.cloudstream3.extractors.DoodWfExtractor
 import com.lagradost.cloudstream3.extractors.DoodWsExtractor
 import com.lagradost.cloudstream3.extractors.DoodYtExtractor
 import com.lagradost.cloudstream3.extractors.Dooood
+import com.lagradost.cloudstream3.extractors.EPlayExtractor
 import com.lagradost.cloudstream3.extractors.Embedgram
+import com.lagradost.cloudstream3.extractors.EmturbovidExtractor
 import com.lagradost.cloudstream3.extractors.Evoload
 import com.lagradost.cloudstream3.extractors.Evoload1
 import com.lagradost.cloudstream3.extractors.FEmbed
@@ -52,6 +55,8 @@ import com.lagradost.cloudstream3.extractors.FileMoon
 import com.lagradost.cloudstream3.extractors.FileMoonIn
 import com.lagradost.cloudstream3.extractors.FileMoonSx
 import com.lagradost.cloudstream3.extractors.Filesim
+import com.lagradost.cloudstream3.extractors.FourCX
+import com.lagradost.cloudstream3.extractors.FourPlayRu
 import com.lagradost.cloudstream3.extractors.Fplayer
 import com.lagradost.cloudstream3.extractors.GMPlayer
 import com.lagradost.cloudstream3.extractors.Gdriveplayer
@@ -67,6 +72,10 @@ import com.lagradost.cloudstream3.extractors.Gdriveplayerus
 import com.lagradost.cloudstream3.extractors.Gofile
 import com.lagradost.cloudstream3.extractors.GuardareStream
 import com.lagradost.cloudstream3.extractors.Guccihide
+import com.lagradost.cloudstream3.extractors.HDMomPlayer
+import com.lagradost.cloudstream3.extractors.HDPlayerSystem
+import com.lagradost.cloudstream3.extractors.HDStreamAble
+import com.lagradost.cloudstream3.extractors.Hotlinger
 import com.lagradost.cloudstream3.extractors.Hxfile
 import com.lagradost.cloudstream3.extractors.JWPlayer
 import com.lagradost.cloudstream3.extractors.Jawcloud
@@ -79,8 +88,10 @@ import com.lagradost.cloudstream3.extractors.LayarKaca
 import com.lagradost.cloudstream3.extractors.Linkbox
 import com.lagradost.cloudstream3.extractors.Luxubu
 import com.lagradost.cloudstream3.extractors.Lvturbo
+import com.lagradost.cloudstream3.extractors.MailRu
 import com.lagradost.cloudstream3.extractors.Maxstream
 import com.lagradost.cloudstream3.extractors.Mcloud
+import com.lagradost.cloudstream3.extractors.Mediafire
 import com.lagradost.cloudstream3.extractors.Megacloud
 import com.lagradost.cloudstream3.extractors.Meownime
 import com.lagradost.cloudstream3.extractors.MetaGnathTuggers
@@ -101,31 +112,16 @@ import com.lagradost.cloudstream3.extractors.MyCloud
 import com.lagradost.cloudstream3.extractors.Neonime7n
 import com.lagradost.cloudstream3.extractors.Neonime8n
 import com.lagradost.cloudstream3.extractors.Odnoklassniki
-import com.lagradost.cloudstream3.extractors.TauVideo
-import com.lagradost.cloudstream3.extractors.SibNet
-import com.lagradost.cloudstream3.extractors.ContentX
-import com.lagradost.cloudstream3.extractors.EmturbovidExtractor
-import com.lagradost.cloudstream3.extractors.Hotlinger
-import com.lagradost.cloudstream3.extractors.FourCX
-import com.lagradost.cloudstream3.extractors.PlayRu
-import com.lagradost.cloudstream3.extractors.FourPlayRu
-import com.lagradost.cloudstream3.extractors.HDMomPlayer
-import com.lagradost.cloudstream3.extractors.HDPlayerSystem
-import com.lagradost.cloudstream3.extractors.VideoSeyred
-import com.lagradost.cloudstream3.extractors.PeaceMakerst
-import com.lagradost.cloudstream3.extractors.HDStreamAble
-import com.lagradost.cloudstream3.extractors.RapidVid
-import com.lagradost.cloudstream3.extractors.TRsTX
-import com.lagradost.cloudstream3.extractors.VidMoxy
-import com.lagradost.cloudstream3.extractors.PixelDrain
-import com.lagradost.cloudstream3.extractors.MailRu
-import com.lagradost.cloudstream3.extractors.Mediafire
-import com.lagradost.cloudstream3.extractors.OkRuSSL
 import com.lagradost.cloudstream3.extractors.OkRuHTTP
+import com.lagradost.cloudstream3.extractors.OkRuSSL
 import com.lagradost.cloudstream3.extractors.Okrulink
+import com.lagradost.cloudstream3.extractors.PeaceMakerst
+import com.lagradost.cloudstream3.extractors.PixelDrain
 import com.lagradost.cloudstream3.extractors.PlayLtXyz
+import com.lagradost.cloudstream3.extractors.PlayRu
 import com.lagradost.cloudstream3.extractors.PlayerVoxzer
 import com.lagradost.cloudstream3.extractors.Rabbitstream
+import com.lagradost.cloudstream3.extractors.RapidVid
 import com.lagradost.cloudstream3.extractors.Rasacintaku
 import com.lagradost.cloudstream3.extractors.SBfull
 import com.lagradost.cloudstream3.extractors.Sbasian
@@ -140,6 +136,7 @@ import com.lagradost.cloudstream3.extractors.Sbspeed
 import com.lagradost.cloudstream3.extractors.Sbthe
 import com.lagradost.cloudstream3.extractors.Sendvid
 import com.lagradost.cloudstream3.extractors.ShaveTape
+import com.lagradost.cloudstream3.extractors.SibNet
 import com.lagradost.cloudstream3.extractors.Simpulumlamerop
 import com.lagradost.cloudstream3.extractors.Solidfiles
 import com.lagradost.cloudstream3.extractors.Ssbstream
@@ -168,7 +165,9 @@ import com.lagradost.cloudstream3.extractors.StreamoUpload
 import com.lagradost.cloudstream3.extractors.Streamplay
 import com.lagradost.cloudstream3.extractors.Streamsss
 import com.lagradost.cloudstream3.extractors.Supervideo
+import com.lagradost.cloudstream3.extractors.TRsTX
 import com.lagradost.cloudstream3.extractors.Tantifilm
+import com.lagradost.cloudstream3.extractors.TauVideo
 import com.lagradost.cloudstream3.extractors.Tomatomatela
 import com.lagradost.cloudstream3.extractors.TomatomatelalClub
 import com.lagradost.cloudstream3.extractors.Tubeless
@@ -183,8 +182,10 @@ import com.lagradost.cloudstream3.extractors.Userscloud
 import com.lagradost.cloudstream3.extractors.Uservideo
 import com.lagradost.cloudstream3.extractors.Vanfem
 import com.lagradost.cloudstream3.extractors.Vicloud
+import com.lagradost.cloudstream3.extractors.VidMoxy
 import com.lagradost.cloudstream3.extractors.VidSrcExtractor
 import com.lagradost.cloudstream3.extractors.VidSrcExtractor2
+import com.lagradost.cloudstream3.extractors.VideoSeyred
 import com.lagradost.cloudstream3.extractors.VideoVard
 import com.lagradost.cloudstream3.extractors.VideovardSX
 import com.lagradost.cloudstream3.extractors.Vidgomunime
@@ -207,6 +208,7 @@ import com.lagradost.cloudstream3.extractors.VizcloudOnline
 import com.lagradost.cloudstream3.extractors.VizcloudSite
 import com.lagradost.cloudstream3.extractors.VizcloudXyz
 import com.lagradost.cloudstream3.extractors.Voe
+import com.lagradost.cloudstream3.extractors.Vtbe
 import com.lagradost.cloudstream3.extractors.Watchx
 import com.lagradost.cloudstream3.extractors.WcoStream
 import com.lagradost.cloudstream3.extractors.Wibufile
@@ -222,10 +224,9 @@ import com.lagradost.cloudstream3.extractors.Zorofile
 import com.lagradost.cloudstream3.extractors.Zplayer
 import com.lagradost.cloudstream3.extractors.ZplayerV2
 import com.lagradost.cloudstream3.extractors.Ztreamhub
-import com.lagradost.cloudstream3.extractors.EPlayExtractor
-import com.lagradost.cloudstream3.extractors.Vtbe
 import com.lagradost.cloudstream3.mvvm.logError
 import com.lagradost.cloudstream3.mvvm.normalSafeApiCall
+import com.lagradost.cloudstream3.plugins.toInteger
 import kotlinx.coroutines.delay
 import me.xdrop.fuzzywuzzy.FuzzySearch
 import org.jsoup.Jsoup
@@ -299,12 +300,16 @@ data class ExtractorLinkPlayList(
 enum class ExtractorLinkType {
     /** Single stream of bytes no matter the actual file type */
     VIDEO,
+
     /** Split into several .ts files, has support for encrypted m3u8s */
     M3U8,
+
     /** Like m3u8 but uses xml, currently no download support */
     DASH,
+
     /** No support at the moment */
     TORRENT,
+
     /** No support at the moment */
     MAGNET,
 }
@@ -319,7 +324,8 @@ private fun inferTypeFromUrl(url: String): ExtractorLinkType {
         else -> ExtractorLinkType.VIDEO
     }
 }
-val INFER_TYPE : ExtractorLinkType? = null
+
+val INFER_TYPE: ExtractorLinkType? = null
 
 /**
  * UUID for the ClearKey DRM scheme.
@@ -356,12 +362,12 @@ open class DrmExtractorLink private constructor(
     /** Used for getExtractorVerifierJob() */
     override val extractorData: String? = null,
     override val type: ExtractorLinkType,
-    open val kid : String,
-    open val key : String,
-    open val uuid : UUID,
-    open val kty : String,
+    open val kid: String,
+    open val key: String,
+    open val uuid: UUID,
+    open val kty: String,
 
-    open val keyRequestParameters : HashMap<String, String>
+    open val keyRequestParameters: HashMap<String, String>
 ) : ExtractorLink(
     source, name, url, referer, quality, type, headers, extractorData
 ) {
@@ -376,11 +382,11 @@ open class DrmExtractorLink private constructor(
         headers: Map<String, String> = mapOf(),
         /** Used for getExtractorVerifierJob() */
         extractorData: String? = null,
-        kid : String,
-        key : String,
-        uuid : UUID = CLEARKEY_UUID,
-        kty : String = "oct",
-        keyRequestParameters : HashMap<String, String> = hashMapOf(),
+        kid: String,
+        key: String,
+        uuid: UUID = CLEARKEY_UUID,
+        kty: String = "oct",
+        keyRequestParameters: HashMap<String, String> = hashMapOf(),
     ) : this(
         source = source,
         name = name,
@@ -433,7 +439,7 @@ open class ExtractorLink constructor(
     }
 
     @JsonIgnore
-    fun getAllHeaders() : Map<String, String> {
+    fun getAllHeaders(): Map<String, String> {
         if (referer.isBlank()) {
             return headers
         } else if (headers.keys.none { it.equals("referer", ignoreCase = true) }) {
@@ -565,6 +571,11 @@ enum class Qualities(var value: Int, val defaultPriority: Int) {
                 P2160.value -> "4K"
                 else -> "${quality}p"
             }
+        }
+
+        fun fromString(string: String): Qualities {
+            val quality = string.toInteger()
+            return entries.firstOrNull { it.value == quality } ?: Unknown
         }
     }
 }
