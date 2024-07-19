@@ -12,19 +12,23 @@ import com.lagradost.cloudstream3.MainAPI
 import com.lagradost.cloudstream3.MainPageData
 import com.lagradost.cloudstream3.MainPageRequest
 import com.lagradost.cloudstream3.SearchResponse
+import com.lagradost.cloudstream3.ShowStatus
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.TvType
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.fixUrl
+import com.lagradost.cloudstream3.mainPage
 import com.lagradost.cloudstream3.mainPageOf
 import com.lagradost.cloudstream3.mvvm.safeApiCall
 import com.lagradost.cloudstream3.newHomePageResponse
 import com.lagradost.cloudstream3.newMovieLoadResponse
 import com.lagradost.cloudstream3.newTvSeriesLoadResponse
+import com.lagradost.cloudstream3.plugins.toInteger
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.Qualities
 import org.json.JSONArray
 import org.json.JSONObject
+import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import org.jsoup.select.Evaluator
 
@@ -38,11 +42,12 @@ class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
     override val hasMainPage = true
 
     override val mainPage: List<MainPageData> = mainPageOf(
-        "$mainUrl/the-loai/phim-le-" to "Phim Lẻ",
-        "$mainUrl/the-loai/phim-bo-" to "Phim Bộ",
-        "$mainUrl/quoc-gia/han-quoc-" to "Phim Hàn Quốc",
-        "$mainUrl/trung-quoc-hong-kong-" to "Phim Trung Quốc",
-        "$mainUrl/quoc-gia/au-my-" to "Phim Âu Mỹ"
+        mainPage("$mainUrl/the-loai/phim-le-", "Phim Lẻ"),
+        mainPage("$mainUrl/the-loai/phim-bo-", "Phim Bộ"),
+        mainPage("$mainUrl/quoc-gia/han-quoc-", "Phim Hàn Quốc"),
+        mainPage("$mainUrl/trung-quoc-hong-kong-", "Phim Trung Quốc"),
+        mainPage("$mainUrl/quoc-gia/au-my-", "Phim Âu Mỹ"),
+        mainPage("$mainUrl/tuyen-tap-", "Tuyển tập", true),
     )
 
     override suspend fun search(query: String): List<SearchResponse> {
@@ -60,18 +65,26 @@ class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val document = app.get(request.data + page).document
-        val homeItems = document.getElementsByClass("list-films film-new")
+        val path = if (request.data.contains("tuyen-tap")) "series" else "new"
+        val homeItems = document.getElementsByClass("list-films film-$path")
             .firstOrNull()
             ?.select(Evaluator.AttributeWithValueStarting("class", "item"))
             ?.mapNotNull {
                 it.toSearchResponse()
             } ?: listOf()
-        return newHomePageResponse(request.name, homeItems)
+        return newHomePageResponse(request, homeItems)
     }
 
     override suspend fun load(url: String): LoadResponse? {
         val document = app.get(url).document
+        return if (url.contains("tuyen-tap")) {
+            loadCollections(document, url)
+        } else {
+            loadNormal(document, url)
+        }
+    }
 
+    private suspend fun loadNormal(document: Document, url: String): LoadResponse? {
         val poster = document.selectFirst(Evaluator.Class("poster")) ?: return null
         val img = poster.selectFirst(Evaluator.Class("adspruce-streamlink"))
             ?.selectFirst(Evaluator.Tag("img"))
@@ -82,8 +95,6 @@ class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
                 ?.attr("href") ?: ""
         val link = poster.selectFirst(Evaluator.Class("btn-see btn btn-danger btn-stream-link"))
             ?.attr("href") ?: ""
-        val rating = document.select(Evaluator.Class("film-status")).lastOrNull()
-            ?.select("a")?.text()
         val details = document.selectFirst(Evaluator.Class("detail"))
         val description =
             details?.selectFirst(Evaluator.Id("info-film"))?.selectFirst(Evaluator.Class("tab"))
@@ -93,12 +104,34 @@ class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
         } else {
             TvType.Movie
         }
-        val actors =
-            poster.selectFirst(Evaluator.Class("dienviendd"))?.allElements?.map { it.text() }
-        val tags = poster.selectFirst(Evaluator.Class("theloaidd"))?.allElements?.map { it.text() }
-        val year = poster.selectFirst(Evaluator.Class("dinfo"))?.run {
-
-        }
+        val actors = document.selectFirst(Evaluator.Class("dienviendd"))
+            ?.select(Evaluator.Tag("a"))?.map { it.text().trim() }
+        val tags = document.selectFirst(Evaluator.Class("theloaidd"))
+            ?.select(Evaluator.Tag("a"))?.map { it.text().trim() }
+        val infoElement = document.selectFirst(Evaluator.Class("dinfo"))
+        val info = infoElement?.toString()
+            ?.replace("\n", "")
+            ?.replace(" +".toRegex(), " ") ?: ""
+        val year = info.substringAfter("Năm sản xuất")
+            .substringBefore("</dd>")
+            .toInteger()
+        val status = info.substringAfter("Tình trạng")
+            .substringBefore("</dd>")
+        val rating = infoElement?.selectFirst(Evaluator.Tag("a"))?.text() ?: ""
+        val recommendations = document.selectFirst(Evaluator.Id("film_related"))?.run {
+            select(Evaluator.Tag("li")).map {
+                val name = it.attr("title") ?: ""
+                val relatedLink = it.selectFirst(Evaluator.Tag("a"))?.attr("href") ?: ""
+                val relatedImg = it.selectFirst(Evaluator.Tag("img"))?.attr("src") ?: ""
+                LiveSearchResponse(
+                    name = name,
+                    url = fixUrl(relatedLink),
+                    posterUrl = fixUrl(relatedImg),
+                    type = TvType.Movie,
+                    apiName = "BluPhim"
+                )
+            }
+        } ?: listOf()
         return if (tvType == TvType.TvSeries) {
             val docEpisodes = app.get(fixUrl(link)).document
             val episodes = docEpisodes.select(Evaluator.Class("list-episode")).lastOrNull()
@@ -114,22 +147,56 @@ class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
                 } ?: listOf()
             newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
                 this.posterUrl = fixUrl(posterUrl)
-//                this.year = year
+                this.year = year
                 this.plot = description
                 this.tags = tags
-                this.rating = rating?.toIntOrNull()
+                this.rating = rating.toInteger()
                 addActors(actors)
                 addTrailer(youtubeTrailer)
+                this.recommendations = recommendations
+                this.showStatus = if (status.contains("Hoàn tất")) {
+                    ShowStatus.Completed
+                } else {
+                    ShowStatus.Ongoing
+                }
             }
         } else {
             newMovieLoadResponse(title, url, TvType.Movie, fixUrl(link)) {
                 this.posterUrl = fixUrl(posterUrl)
+                this.year = year
                 this.plot = description
                 this.tags = tags
-                this.rating = rating?.toIntOrNull()
+                this.rating = rating.toInteger()
                 addActors(actors)
                 addTrailer(youtubeTrailer)
+                this.recommendations = recommendations
             }
+        }
+    }
+
+    private suspend fun loadCollections(document: Document, url: String): LoadResponse? {
+        val title = document.selectFirst(Evaluator.Class("main-content"))
+            ?.selectFirst(Evaluator.Tag("h1"))?.text() ?: ""
+        val items = document.getElementsByClass("list-films film-new")
+            .firstOrNull()
+            ?.select(Evaluator.AttributeWithValueStarting("class", "item"))
+        val episodes = items?.map {
+            val href = it.selectFirst(Evaluator.Tag("a"))?.attr("href") ?: ""
+            val name = it.selectFirst(Evaluator.Class("name"))
+                ?.selectFirst(Evaluator.Tag("span"))?.text() ?: ""
+            val posterUrl = it.selectFirst(Evaluator.Tag("img"))?.attr("src") ?: ""
+            Episode(
+                data = "${fixUrl(href)}/series",
+                name = name,
+                posterUrl = fixUrl(posterUrl),
+                description = it.selectFirst(Evaluator.Tag("span"))?.text()
+            )
+        } ?: listOf()
+        val posterUrl = document.selectFirst(Evaluator.AttributeWithValue("property", "og:image"))
+            ?.attr("content") ?: ""
+        return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
+            this.posterUrl = fixUrl(posterUrl)
+            this.plot = title
         }
     }
 
@@ -139,19 +206,28 @@ class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        var document = app.get(fixUrl(data)).document
-        val ref =
-            document.selectFirst(Evaluator.Id("iframeStream"))?.attr("src")
-                ?: return super.loadLinks(
-                    data,
-                    isCasting,
-                    subtitleCallback,
-                    callback
-                )
+        val isSeries = data.endsWith("/series")
+        var link = data
+        if (isSeries) {
+            link = data.replaceFirst("/series", "")
+            val doc = app.get(fixUrl(link)).document
+            link = doc.selectFirst(Evaluator.Class("poster"))
+                ?.selectFirst(Evaluator.Class("btn-see btn btn-danger btn-stream-link"))
+                ?.attr("href") ?: ""
+        }
+        var document = app.get(fixUrl(link)).document
+
+        val ref = document.selectFirst(Evaluator.Id("iframeStream"))?.attr("src")
+            ?: return super.loadLinks(
+                link,
+                isCasting,
+                subtitleCallback,
+                callback
+            )
         val refUri = Uri.parse(ref)
         document = app.get(
             url = fixUrl(ref),
-            referer = "https://bluphim.net/"
+            referer = mainUrl
         ).document
         val videoId = ref.substringAfter("id=").substringBefore("&")
         val script = document.select(Evaluator.Tag("script")).map { it.data() }
@@ -180,7 +256,7 @@ class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
             val cdnUrl = "$cdn/streaming?id=$videoId&web=BluPhim.Net&$token&cdn=$cdn&lang=vi"
             document = app.get(
                 url = cdnUrl,
-                referer = ref,
+                referer = "${refUri.scheme}://${refUri.host}/",
             ).document
             val content = document.data()
             val videoUrl =
@@ -209,9 +285,9 @@ class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
                         "CDN",
                         "CDN",
                         videoUrl,
-                        referer = "$mainUrl/",
+                        referer = cdn,
                         quality = Qualities.P1080.value,
-                        isM3u8 = true
+                        isM3u8 = true,
                     )
                 )
             }

@@ -431,7 +431,12 @@ open class ExtractorLink constructor(
 
         videoSize = videoSize ?: runCatching {
             val response =
-                app.head(this.url, headers = headers, referer = referer, timeout = timeoutSeconds)
+                app.head(
+                    this.url,
+                    headers = headers,
+                    referer = referer.ifEmpty { null },
+                    timeout = timeoutSeconds
+                )
             response.headers["Content-Length"]?.toLong()
         }.getOrNull()
 

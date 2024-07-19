@@ -188,10 +188,14 @@ class APIRepository(val api: MainAPI) {
     ): Boolean {
         if (isInvalidData(data)) return false // this makes providers cleaner
         return try {
-            api.loadLinks(data, isCasting, subtitleCallback, callback, subtitleFileCallback)
+            api.loadLinks(data, isCasting, subtitleCallback, callback)
         } catch (throwable: Throwable) {
-            logError(throwable)
-            return false
+            try {
+                api.loadLinks(data, isCasting, subtitleCallback, callback, subtitleFileCallback)
+            } catch (e: Exception) {
+                logError(throwable)
+                return false
+            }
         }
     }
 }
