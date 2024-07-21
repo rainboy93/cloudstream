@@ -262,7 +262,8 @@ class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
             val videoUrl =
                 "${content.substringAfter("url = '").substringBefore("'")}$videoId/?$token"
             try {
-                val subtitleTracks = "${content.substringAfter("").substringBefore("}]")}}]"
+                val subtitleTracks =
+                    "${content.substringAfter("tracks:").substringBefore("}]").trim()}}]"
                 val jsonArray = JSONArray(subtitleTracks)
                 for (i in 0 until jsonArray.length()) {
                     val jsonObject = JSONObject(jsonArray.get(i).toString())

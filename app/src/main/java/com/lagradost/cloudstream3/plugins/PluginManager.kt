@@ -44,6 +44,7 @@ import com.lagradost.cloudstream3.plugins.bluphim.BluPhimPlugin
 import com.lagradost.cloudstream3.plugins.bluphim.Phim1080Plugin
 import com.lagradost.cloudstream3.plugins.motchill.MotChillPlugin
 import com.lagradost.cloudstream3.plugins.nguonc.NguonCPlugin
+import com.lagradost.cloudstream3.plugins.ophim.OPhimPlugin
 import com.lagradost.cloudstream3.plugins.phimmoichill.PhimmoichillProviderPlugin
 import com.lagradost.cloudstream3.plugins.pidtap.PidtapPlugin
 import com.lagradost.cloudstream3.plugins.vebo.VeBoPlugin
@@ -477,10 +478,10 @@ object PluginManager {
             BluPhimPlugin(),
             PidtapPlugin(),
             VeBoPlugin(),
-//            TwitchPlugin(),
             NguonCPlugin(),
             Phim1080Plugin(),
-            VuiGhePlugin()
+            VuiGhePlugin(),
+            OPhimPlugin()
         ).forEach {
             if (!plugins.contains(it.provider.mainUrl)) {
                 loadFixedPlugin(context, it)
