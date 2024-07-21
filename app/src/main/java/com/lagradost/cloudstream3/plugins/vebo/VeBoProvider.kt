@@ -11,6 +11,7 @@ import com.lagradost.cloudstream3.SearchResponse
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.TvType
 import com.lagradost.cloudstream3.app
+import com.lagradost.cloudstream3.mainPage
 import com.lagradost.cloudstream3.mainPageOf
 import com.lagradost.cloudstream3.mvvm.safeApiCall
 import com.lagradost.cloudstream3.newHomePageResponse
@@ -32,8 +33,8 @@ class VeBoProvider(val plugin: VeBoPlugin) : MainAPI() {
     override val hasDownloadSupport = false
 
     override val mainPage: List<MainPageData> = mainPageOf(
-        "https://api.vebo.xyz/api/news/vebotv/list/xemlai/" to "Xem lại",
-        "https://api.vebo.xyz/api/news/vebotv/list/highlight/" to "Highlights"
+        mainPage("https://api.vebo.xyz/api/news/vebotv/list/xemlai/", "Xem lại", true),
+        mainPage("https://api.vebo.xyz/api/news/vebotv/list/highlight/", "Highlights", true)
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
@@ -47,7 +48,7 @@ class VeBoProvider(val plugin: VeBoPlugin) : MainAPI() {
             val matches = list.map {
                 it.toSearchResponse()
             }
-            return newHomePageResponse(request.name, matches)
+            return newHomePageResponse(request, matches)
         } catch (e: Exception) {
             return super.getMainPage(page, request)
         }

@@ -10,6 +10,7 @@ import com.lagradost.cloudstream3.MainAPI
 import com.lagradost.cloudstream3.MainPageData
 import com.lagradost.cloudstream3.MainPageRequest
 import com.lagradost.cloudstream3.SearchResponse
+import com.lagradost.cloudstream3.ShowStatus
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.TvType
 import com.lagradost.cloudstream3.app
@@ -97,13 +98,25 @@ class OPhimProvider : MainAPI() {
         val posterUrl = "$imgUrl/${response.data?.item?.posterUrl}"
         val thumbUrl = "$imgUrl/${response.data?.item?.thumbUrl}"
         val duration = response.data?.item?.time.toInteger()
+        val tags = response.data?.item?.category
+            ?.filterNotNull()
+            ?.map {
+                it.name ?: ""
+            }
         return if (tvType == TvType.TvSeries) {
             val episodes = response.data?.item?.episodes
                 ?.filterNotNull()
+                ?.find {
+                    it.serverData?.any { data ->
+                        !data?.linkM3u8.isNullOrEmpty()
+                    } == true
+                }
+                ?.serverData
+                ?.filterNotNull()
                 ?.map {
                     Episode(
-                        data = it.serverData?.firstOrNull()?.linkM3u8 ?: "",
-                        name = it.serverName,
+                        data = it.linkM3u8 ?: "",
+                        name = it.filename,
                         posterUrl = thumbUrl
                     )
                 } ?: listOf()
@@ -117,6 +130,12 @@ class OPhimProvider : MainAPI() {
                 this.year = response.data?.item?.year
                 this.plot = description
                 this.duration = duration
+                this.showStatus = if (response.data?.item?.status == "completed") {
+                    ShowStatus.Completed
+                } else {
+                    ShowStatus.Ongoing
+                }
+                this.tags = tags
                 addTrailer(trailer)
                 addActors(actors)
             }
@@ -129,6 +148,7 @@ class OPhimProvider : MainAPI() {
                 this.year = response.data?.item?.year
                 this.plot = description
                 this.duration = duration
+                this.tags = tags
                 addTrailer(trailer)
                 addActors(actors)
             }
@@ -160,7 +180,7 @@ class OPhimProvider : MainAPI() {
         return LiveSearchResponse(
             name = name ?: "",
             url = "$mainUrl/phim/$slug",
-            posterUrl = "${imgUrl}/$posterUrl",
+            posterUrl = "${imgUrl}/$thumbUrl",
             type = if (type == "single") TvType.Movie else TvType.TvSeries,
             apiName = "Ổ Phim"
         )
