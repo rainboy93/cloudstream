@@ -11,23 +11,29 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.*
+import android.widget.AbsListView
+import android.widget.ArrayAdapter
+import android.widget.ListView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
-import androidx.lifecycle.*
 import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.chip.Chip
-import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.APIHolder.apis
 import com.lagradost.cloudstream3.APIHolder.filterProviderByPreferredMedia
 import com.lagradost.cloudstream3.APIHolder.getApiProviderLangSettings
+import com.lagradost.cloudstream3.AllLanguagesName
 import com.lagradost.cloudstream3.CommonActivity.showToast
+import com.lagradost.cloudstream3.MainAPI
+import com.lagradost.cloudstream3.R
+import com.lagradost.cloudstream3.SearchResponse
+import com.lagradost.cloudstream3.TvType
 import com.lagradost.cloudstream3.databinding.FragmentHomeBinding
 import com.lagradost.cloudstream3.databinding.HomeEpisodesExpandedBinding
 import com.lagradost.cloudstream3.databinding.HomeSelectMainpageBinding
@@ -40,7 +46,9 @@ import com.lagradost.cloudstream3.ui.APIRepository.Companion.noneApi
 import com.lagradost.cloudstream3.ui.APIRepository.Companion.randomApi
 import com.lagradost.cloudstream3.ui.account.AccountHelper.showAccountSelectLinear
 import com.lagradost.cloudstream3.ui.result.txt
-import com.lagradost.cloudstream3.ui.search.*
+import com.lagradost.cloudstream3.ui.search.SEARCH_ACTION_LOAD
+import com.lagradost.cloudstream3.ui.search.SEARCH_ACTION_PLAY_FILE
+import com.lagradost.cloudstream3.ui.search.SearchAdapter
 import com.lagradost.cloudstream3.ui.search.SearchHelper.handleSearchClickCallback
 import com.lagradost.cloudstream3.ui.settings.Globals.EMULATOR
 import com.lagradost.cloudstream3.ui.settings.Globals.PHONE
@@ -58,7 +66,6 @@ import com.lagradost.cloudstream3.utils.SubtitleHelper.getFlagFromIso
 import com.lagradost.cloudstream3.utils.UIHelper.dismissSafe
 import com.lagradost.cloudstream3.utils.UIHelper.getSpanCount
 import com.lagradost.cloudstream3.utils.UIHelper.popupMenuNoIconsAndNoStringRes
-import java.util.*
 
 
 class HomeFragment : Fragment() {
@@ -244,6 +251,7 @@ class HomeFragment : Fragment() {
             livestream: Chip?,
             nsfw: Chip?,
             others: Chip?,
+            manga: Chip?
         ): List<Pair<Chip?, List<TvType>>> {
             // This list should be same order as home screen to aid navigation
             return listOf(
@@ -256,6 +264,7 @@ class HomeFragment : Fragment() {
                 Pair(livestream, listOf(TvType.Live)),
                 Pair(nsfw, listOf(TvType.NSFW)),
                 Pair(others, listOf(TvType.Others)),
+                Pair(manga, listOf(TvType.Manga)),
             )
         }
 
@@ -268,7 +277,8 @@ class HomeFragment : Fragment() {
             header.homeSelectAsian,
             header.homeSelectLivestreams,
             header.homeSelectNsfw,
-            header.homeSelectOthers
+            header.homeSelectOthers,
+            header.homeSelectManga
         )
 
         fun validateChips(header: TvtypesChipsBinding?, validTypes: List<TvType>) {

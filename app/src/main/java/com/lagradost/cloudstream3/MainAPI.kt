@@ -891,6 +891,7 @@ enum class TvType(value: Int?) {
 
     /** Wont load the built in player, make your own interaction */
     CustomMedia(15),
+    Manga(16)
 }
 
 public enum class AutoDownloadMode(val value: Int) {

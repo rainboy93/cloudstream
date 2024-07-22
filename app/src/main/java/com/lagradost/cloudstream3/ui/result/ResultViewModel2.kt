@@ -1,7 +1,10 @@
 package com.lagradost.cloudstream3.ui.result
 
 import android.app.Activity
-import android.content.*
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.DialogInterface
+import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -16,21 +19,65 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.lagradost.cloudstream3.*
+import com.lagradost.cloudstream3.APIHolder
 import com.lagradost.cloudstream3.APIHolder.apis
 import com.lagradost.cloudstream3.APIHolder.getId
 import com.lagradost.cloudstream3.APIHolder.unixTime
 import com.lagradost.cloudstream3.APIHolder.unixTimeMS
+import com.lagradost.cloudstream3.AcraApplication
 import com.lagradost.cloudstream3.AcraApplication.Companion.setKey
+import com.lagradost.cloudstream3.ActorData
+import com.lagradost.cloudstream3.AnimeLoadResponse
 import com.lagradost.cloudstream3.CommonActivity.activity
 import com.lagradost.cloudstream3.CommonActivity.getCastSession
 import com.lagradost.cloudstream3.CommonActivity.showToast
+import com.lagradost.cloudstream3.DubStatus
+import com.lagradost.cloudstream3.EpisodeResponse
+import com.lagradost.cloudstream3.LiveStreamLoadResponse
+import com.lagradost.cloudstream3.LoadResponse
 import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
 import com.lagradost.cloudstream3.LoadResponse.Companion.getAniListId
 import com.lagradost.cloudstream3.LoadResponse.Companion.getMalId
 import com.lagradost.cloudstream3.LoadResponse.Companion.isMovie
+import com.lagradost.cloudstream3.MPV
+import com.lagradost.cloudstream3.MPV_COMPONENT
+import com.lagradost.cloudstream3.MPV_PACKAGE
+import com.lagradost.cloudstream3.MainActivity
+import com.lagradost.cloudstream3.MovieLoadResponse
+import com.lagradost.cloudstream3.ProviderType
+import com.lagradost.cloudstream3.R
+import com.lagradost.cloudstream3.ResultResume
+import com.lagradost.cloudstream3.SearchResponse
+import com.lagradost.cloudstream3.SeasonData
+import com.lagradost.cloudstream3.ShowStatus
+import com.lagradost.cloudstream3.SubtitleFile
+import com.lagradost.cloudstream3.TorrentLoadResponse
+import com.lagradost.cloudstream3.TrackerType
+import com.lagradost.cloudstream3.TrailerData
+import com.lagradost.cloudstream3.TvSeriesLoadResponse
+import com.lagradost.cloudstream3.TvType
+import com.lagradost.cloudstream3.USER_AGENT
+import com.lagradost.cloudstream3.VLC
+import com.lagradost.cloudstream3.VLC_COMPONENT
+import com.lagradost.cloudstream3.VLC_PACKAGE
+import com.lagradost.cloudstream3.VPNStatus
+import com.lagradost.cloudstream3.WEB_VIDEO
+import com.lagradost.cloudstream3.WEB_VIDEO_CAST_PACKAGE
+import com.lagradost.cloudstream3.amap
+import com.lagradost.cloudstream3.apmap
+import com.lagradost.cloudstream3.argamap
+import com.lagradost.cloudstream3.isEpisodeBased
+import com.lagradost.cloudstream3.isLiveStream
 import com.lagradost.cloudstream3.metaproviders.SyncRedirector
-import com.lagradost.cloudstream3.mvvm.*
+import com.lagradost.cloudstream3.mvvm.Resource
+import com.lagradost.cloudstream3.mvvm.debugAssert
+import com.lagradost.cloudstream3.mvvm.debugException
+import com.lagradost.cloudstream3.mvvm.launchSafe
+import com.lagradost.cloudstream3.mvvm.logError
+import com.lagradost.cloudstream3.mvvm.normalSafeApiCall
+import com.lagradost.cloudstream3.mvvm.safeApiCall
+import com.lagradost.cloudstream3.sortSubs
+import com.lagradost.cloudstream3.sortUrls
 import com.lagradost.cloudstream3.syncproviders.AccountManager
 import com.lagradost.cloudstream3.syncproviders.AccountManager.Companion.secondsToReadable
 import com.lagradost.cloudstream3.syncproviders.SyncAPI
@@ -46,7 +93,6 @@ import com.lagradost.cloudstream3.ui.player.RepoLinkGenerator
 import com.lagradost.cloudstream3.ui.player.SubtitleData
 import com.lagradost.cloudstream3.ui.result.EpisodeAdapter.Companion.getPlayerAction
 import com.lagradost.cloudstream3.ui.subtitles.SubtitlesFragment
-import com.lagradost.cloudstream3.utils.*
 import com.lagradost.cloudstream3.utils.AppUtils.getNameFull
 import com.lagradost.cloudstream3.utils.AppUtils.isAppInstalled
 import com.lagradost.cloudstream3.utils.AppUtils.isConnectedToChromecast
@@ -56,6 +102,10 @@ import com.lagradost.cloudstream3.utils.Coroutines.ioSafe
 import com.lagradost.cloudstream3.utils.Coroutines.ioWork
 import com.lagradost.cloudstream3.utils.Coroutines.ioWorkSafe
 import com.lagradost.cloudstream3.utils.Coroutines.main
+import com.lagradost.cloudstream3.utils.DOWNLOAD_EPISODE_CACHE
+import com.lagradost.cloudstream3.utils.DOWNLOAD_HEADER_CACHE
+import com.lagradost.cloudstream3.utils.DataStore
+import com.lagradost.cloudstream3.utils.DataStoreHelper
 import com.lagradost.cloudstream3.utils.DataStoreHelper.deleteBookmarkedData
 import com.lagradost.cloudstream3.utils.DataStoreHelper.getAllBookmarkedData
 import com.lagradost.cloudstream3.utils.DataStoreHelper.getAllFavorites
@@ -81,9 +131,23 @@ import com.lagradost.cloudstream3.utils.DataStoreHelper.setResultWatchState
 import com.lagradost.cloudstream3.utils.DataStoreHelper.setSubscribedData
 import com.lagradost.cloudstream3.utils.DataStoreHelper.setVideoWatchState
 import com.lagradost.cloudstream3.utils.DataStoreHelper.updateSubscribedData
+import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.ExtractorSubtitleLink
+import com.lagradost.cloudstream3.utils.FillerEpisodeCheck
+import com.lagradost.cloudstream3.utils.INFER_TYPE
+import com.lagradost.cloudstream3.utils.Qualities
+import com.lagradost.cloudstream3.utils.SubtitleHelper
 import com.lagradost.cloudstream3.utils.UIHelper.clipboardHelper
 import com.lagradost.cloudstream3.utils.UIHelper.navigate
-import kotlinx.coroutines.*
+import com.lagradost.cloudstream3.utils.VideoDownloadHelper
+import com.lagradost.cloudstream3.utils.VideoDownloadManager
+import com.lagradost.cloudstream3.utils.loadExtractor
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import java.io.File
 import java.util.concurrent.TimeUnit
 
@@ -249,6 +313,7 @@ fun LoadResponse.toResultData(repo: APIRepository): ResultData {
                 TvType.Music -> R.string.music_singlar
                 TvType.AudioBook -> R.string.audio_book_singular
                 TvType.CustomMedia -> R.string.custom_media_singluar
+                TvType.Manga -> R.string.manga
             }
         ),
         yearText = txt(year?.toString()),
@@ -633,6 +698,7 @@ class ResultViewModel2 : ViewModel() {
                 TvType.Music -> "Music"
                 TvType.AudioBook -> "AudioBooks"
                 TvType.CustomMedia -> "Media"
+                TvType.Manga -> "Manga"
             }
         }
 

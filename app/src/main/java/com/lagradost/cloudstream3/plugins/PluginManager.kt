@@ -1,5 +1,6 @@
 package com.lagradost.cloudstream3.plugins
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.Notification
 import android.app.NotificationChannel
@@ -40,6 +41,7 @@ import com.lagradost.cloudstream3.plugins.RepositoryManager.ONLINE_PLUGINS_FOLDE
 import com.lagradost.cloudstream3.plugins.RepositoryManager.PREBUILT_REPOSITORIES
 import com.lagradost.cloudstream3.plugins.RepositoryManager.downloadPluginToFile
 import com.lagradost.cloudstream3.plugins.RepositoryManager.getRepoPlugins
+import com.lagradost.cloudstream3.plugins.blog.BlogTruyenPlugin
 import com.lagradost.cloudstream3.plugins.bluphim.BluPhimPlugin
 import com.lagradost.cloudstream3.plugins.bluphim.Phim1080Plugin
 import com.lagradost.cloudstream3.plugins.motchill.MotChillPlugin
@@ -481,7 +483,8 @@ object PluginManager {
             NguonCPlugin(),
             Phim1080Plugin(),
             VuiGhePlugin(),
-            OPhimPlugin()
+            OPhimPlugin(),
+            BlogTruyenPlugin()
         ).forEach {
             if (!plugins.contains(it.provider.mainUrl)) {
                 loadFixedPlugin(context, it)
@@ -735,6 +738,7 @@ object PluginManager {
         }
     }
 
+    @SuppressLint("MissingPermission")
     private fun createNotification(
         context: Context,
         uitext: UiText,
