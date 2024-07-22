@@ -47,7 +47,7 @@ class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
         mainPage("$mainUrl/quoc-gia/han-quoc-", "Phim Hàn Quốc"),
         mainPage("$mainUrl/trung-quoc-hong-kong-", "Phim Trung Quốc"),
         mainPage("$mainUrl/quoc-gia/au-my-", "Phim Âu Mỹ"),
-        mainPage("$mainUrl/tuyen-tap-", "Tuyển tập", true),
+        mainPage("$mainUrl/tuyen-tap-", "Series", true),
     )
 
     override suspend fun search(query: String): List<SearchResponse> {
@@ -64,8 +64,13 @@ class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
     }
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val document = app.get(request.data + page).document
-        val path = if (request.data.contains("tuyen-tap")) "series" else "new"
+        val isCustom = request.data.startsWith("custom")
+        val document = if (isCustom) {
+            app.get(request.data.replace("custom", "")).document
+        } else {
+            app.get(request.data + page).document
+        }
+        val path = if (!isCustom && request.data.contains("tuyen-tap")) "series" else "new"
         val homeItems = document.getElementsByClass("list-films film-$path")
             .firstOrNull()
             ?.select(Evaluator.AttributeWithValueStarting("class", "item"))
@@ -134,6 +139,10 @@ class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
         } ?: listOf()
         return if (tvType == TvType.TvSeries) {
             val docEpisodes = app.get(fixUrl(link)).document
+            val posterUrl =
+                docEpisodes.selectFirst(Evaluator.AttributeWithValue("property", "og:image"))
+                    ?.attr("content")
+                    ?: ""
             val episodes = docEpisodes.select(Evaluator.Class("list-episode")).lastOrNull()
                 ?.select(Evaluator.Tag("a"))?.map {
                     val href = it.attr("href")
@@ -143,6 +152,7 @@ class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
                         data = href,
                         name = name,
                         episode = episode,
+                        posterUrl = posterUrl
                     )
                 } ?: listOf()
             newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {

@@ -31,7 +31,7 @@ class SearchClickCallback(
 )
 
 class SearchAdapter(
-    private val cardList: MutableList<SearchResponse>,
+    val cardList: MutableList<SearchResponse>,
     private val resView: AutofitRecyclerView,
     private val clickCallback: (SearchClickCallback) -> Unit,
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {

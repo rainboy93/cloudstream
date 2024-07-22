@@ -18,6 +18,7 @@ import com.lagradost.cloudstream3.LoadResponse
 import com.lagradost.cloudstream3.MainAPI
 import com.lagradost.cloudstream3.MainActivity
 import com.lagradost.cloudstream3.MainActivity.Companion.lastError
+import com.lagradost.cloudstream3.MainPageRequest
 import com.lagradost.cloudstream3.SearchResponse
 import com.lagradost.cloudstream3.amap
 import com.lagradost.cloudstream3.mvvm.Resource
@@ -203,6 +204,7 @@ class HomeViewModel : ViewModel() {
         var list: HomePageList,
         var currentPage: Int,
         var hasNext: Boolean,
+        var url: String = ""
     )
 
     private val expandable: MutableMap<String, ExpandableHomepageList> = mutableMapOf()
@@ -212,21 +214,38 @@ class HomeViewModel : ViewModel() {
 
     val lock: MutableSet<String> = mutableSetOf()
 
-    suspend fun expandAndReturn(name: String): ExpandableHomepageList? {
+    suspend fun expandAndReturn(
+        name: String,
+        exp: ExpandableHomepageList? = null
+    ): ExpandableHomepageList? {
         if (lock.contains(name)) return null
         lock += name
 
         repo?.apply {
             waitForHomeDelay()
-
-            expandable[name]?.let { current ->
+            (expandable[name] ?: exp)?.let { current ->
                 debugAssert({ !current.hasNext }) {
                     "Expand called when not needed"
                 }
 
                 val nextPage = current.currentPage + 1
-                val next = getMainPage(nextPage, mainPage.indexOfFirst { it.name == name })
+                val next = if (current.url.isEmpty()) {
+                    getMainPage(nextPage, mainPage.indexOfFirst { it.name == name })
+                } else {
+                    getMainPage(
+                        nextPage,
+                        request = MainPageRequest(current.list.name, "custom${current.url}", false)
+                    )
+                }
                 if (next is Resource.Success) {
+                    val newList = next.value.firstOrNull()?.items?.firstOrNull()
+                    if (newList != null && current.url.isNotEmpty()) {
+                        return ExpandableHomepageList(
+                            newList,
+                            1,
+                            false
+                        )
+                    }
                     next.value.filterNotNull().forEach { main ->
                         main.items.forEach { newList ->
                             val key = newList.name

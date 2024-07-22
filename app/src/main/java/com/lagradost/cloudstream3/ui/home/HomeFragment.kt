@@ -66,6 +66,8 @@ import com.lagradost.cloudstream3.utils.SubtitleHelper.getFlagFromIso
 import com.lagradost.cloudstream3.utils.UIHelper.dismissSafe
 import com.lagradost.cloudstream3.utils.UIHelper.getSpanCount
 import com.lagradost.cloudstream3.utils.UIHelper.popupMenuNoIconsAndNoStringRes
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 
 class HomeFragment : Fragment() {
@@ -195,33 +197,46 @@ class HomeFragment : Fragment() {
                     hasNext = expand.hasNext
                 }
 
-            binding.homeExpandedRecycler.addOnScrollListener(object :
-                RecyclerView.OnScrollListener() {
-                var expandCount = 0
-                val name = expand.list.name
-
-                override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
-                    super.onScrollStateChanged(recyclerView, newState)
-
-                    val adapter = recyclerView.adapter
-                    if (adapter !is SearchAdapter) return
-
-                    val count = adapter.itemCount
-                    val currentHasNext = adapter.hasNext
-                    //!recyclerView.canScrollVertically(1)
-                    if (!recyclerView.isRecyclerScrollable() && currentHasNext && expandCount != count) {
-                        expandCount = count
-                        ioSafe {
-                            expandCallback?.invoke(name)?.let { newExpand ->
-                                (recyclerView.adapter as? SearchAdapter?)?.apply {
-                                    hasNext = newExpand.hasNext
-                                    updateList(newExpand.list.list)
-                                }
+            if (expand.currentPage == 0) {
+                ioSafe {
+                    expandCallback?.invoke(expand.list.name)?.let { newExpand ->
+                        (binding.homeExpandedRecycler.adapter as? SearchAdapter?)?.apply {
+                            withContext(Dispatchers.Main) {
+                                hasNext = newExpand.hasNext
+                                updateList(newExpand.list.list)
                             }
                         }
                     }
                 }
-            })
+            } else {
+                binding.homeExpandedRecycler.addOnScrollListener(object :
+                    RecyclerView.OnScrollListener() {
+                    var expandCount = 0
+                    val name = expand.list.name
+
+                    override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+                        super.onScrollStateChanged(recyclerView, newState)
+
+                        val adapter = recyclerView.adapter
+                        if (adapter !is SearchAdapter) return
+
+                        val count = adapter.itemCount
+                        val currentHasNext = adapter.hasNext
+                        //!recyclerView.canScrollVertically(1)
+                        if (!recyclerView.isRecyclerScrollable() && currentHasNext && expandCount != count) {
+                            expandCount = count
+                            ioSafe {
+                                expandCallback?.invoke(name)?.let { newExpand ->
+                                    (recyclerView.adapter as? SearchAdapter?)?.apply {
+                                        hasNext = newExpand.hasNext
+                                        updateList(newExpand.list.list)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                })
+            }
 
             val spanListener = { span: Int ->
                 binding.homeExpandedRecycler.spanCount = span
@@ -659,7 +674,7 @@ class HomeFragment : Fragment() {
             val (items, delete) = item
 
             bottomSheetDialog = activity?.loadHomepageList(items, expandCallback = {
-                homeViewModel.expandAndReturn(it)
+                homeViewModel.expandAndReturn(it, if (items.url.isEmpty()) null else items)
             }, dismissCallback = {
                 homeViewModel.popup(null)
                 bottomSheetDialog = null

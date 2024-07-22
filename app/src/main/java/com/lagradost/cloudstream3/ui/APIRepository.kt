@@ -133,11 +133,16 @@ class APIRepository(val api: MainAPI) {
         delay(delta)
     }
 
-    suspend fun getMainPage(page: Int, nameIndex: Int? = null): Resource<List<HomePageResponse?>> {
+    suspend fun getMainPage(
+        page: Int,
+        nameIndex: Int? = null,
+        request: MainPageRequest? = null
+    ): Resource<List<HomePageResponse?>> {
         return safeApiCall {
             api.lastHomepageRequest = unixTimeMS
-
-            nameIndex?.let { api.mainPage.getOrNull(it) }?.let { data ->
+            request?.let {
+                listOf(api.getMainPage(page, request))
+            } ?: nameIndex?.let { api.mainPage.getOrNull(it) }?.let { data ->
                 listOf(
                     api.getMainPage(
                         page,

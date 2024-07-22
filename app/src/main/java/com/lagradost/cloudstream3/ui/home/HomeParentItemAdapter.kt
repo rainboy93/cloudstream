@@ -53,7 +53,7 @@ open class ParentItemAdapter(
                 "value",
                 recyclerView?.layoutManager?.onSaveInstanceState()
             )
-            (recyclerView?.adapter as? BaseAdapter<*,*>)?.save(recyclerView)
+            (recyclerView?.adapter as? BaseAdapter<*, *>)?.save(recyclerView)
         }
 
         override fun restore(state: Bundle) {
@@ -91,7 +91,23 @@ open class ParentItemAdapter(
             homeChildRecyclerview.adapter = HomeChildItemAdapter(
                 fragment = fragment,
                 id = id + position + 100,
-                clickCallback = clickCallback,
+                clickCallback = {
+                    if (it.card.url.contains("tuyen-tap")) {
+                        moreInfoClickCallback(
+                            HomeViewModel.ExpandableHomepageList(
+                                HomePageList(
+                                    it.card.name,
+                                    listOf(it.card)
+                                ),
+                                0,
+                                true,
+                                url = it.card.url
+                            )
+                        )
+                    } else {
+                        clickCallback(it)
+                    }
+                },
                 nextFocusUp = homeChildRecyclerview.nextFocusUpId,
                 nextFocusDown = homeChildRecyclerview.nextFocusDownId,
             ).apply {
