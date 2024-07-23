@@ -127,7 +127,6 @@ import com.lagradost.cloudstream3.ui.settings.Globals.TV
 import com.lagradost.cloudstream3.ui.settings.Globals.isLayout
 import com.lagradost.cloudstream3.ui.settings.Globals.updateTv
 import com.lagradost.cloudstream3.ui.settings.SettingsGeneral
-import com.lagradost.cloudstream3.ui.setup.HAS_DONE_SETUP_KEY
 import com.lagradost.cloudstream3.utils.ApkInstaller
 import com.lagradost.cloudstream3.utils.AppUtils.html
 import com.lagradost.cloudstream3.utils.AppUtils.isCastApiAvailable
@@ -1787,10 +1786,10 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener,
         }
 
         try {
-            if (getKey(HAS_DONE_SETUP_KEY, false) != true) {
-                navController.navigate(R.id.navigation_setup_language)
+//            if (getKey(HAS_DONE_SETUP_KEY, false) != true) {
+//                navController.navigate(R.id.navigation_setup_language)
                 // If no plugins bring up extensions screen
-            }
+//            }
 //            else if (PluginManager.getPluginsOnline().isEmpty()
 //                && PluginManager.getPluginsLocal().isEmpty()
 ////                && PREBUILT_REPOSITORIES.isNotEmpty()

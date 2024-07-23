@@ -53,10 +53,10 @@ fun getCurrentLocale(context: Context): String {
     val conf = res.configuration
 
     return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-        conf?.locales?.get(0)?.toString() ?: "en"
+        conf?.locales?.get(0)?.toString() ?: "vi"
     } else {
         @Suppress("DEPRECATION")
-        conf?.locale?.toString() ?: "en"
+        conf?.locale?.toString() ?: "vi"
     }
 }
 

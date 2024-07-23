@@ -166,7 +166,7 @@ class VuiGheProvider : MainAPI() {
             null
         }
 
-        var subtitleUrl = ""
+        var subtitleUrl: String
 
         val sources = mutableListOf<Triple<String, String, Qualities>>()
         try {

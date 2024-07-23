@@ -17,6 +17,7 @@ import com.lagradost.cloudstream3.ui.BaseDiffCallback
 import com.lagradost.cloudstream3.ui.ViewHolderState
 import com.lagradost.cloudstream3.ui.result.FOCUS_SELF
 import com.lagradost.cloudstream3.ui.result.setLinearListLayout
+import com.lagradost.cloudstream3.ui.search.SEARCH_ACTION_LOAD
 import com.lagradost.cloudstream3.ui.search.SearchClickCallback
 import com.lagradost.cloudstream3.ui.settings.Globals.EMULATOR
 import com.lagradost.cloudstream3.ui.settings.Globals.PHONE
@@ -92,7 +93,7 @@ open class ParentItemAdapter(
                 fragment = fragment,
                 id = id + position + 100,
                 clickCallback = {
-                    if (it.card.url.contains("tuyen-tap")) {
+                    if (it.action == SEARCH_ACTION_LOAD && it.card.url.contains("tuyen-tap")) {
                         moreInfoClickCallback(
                             HomeViewModel.ExpandableHomepageList(
                                 HomePageList(

@@ -203,7 +203,9 @@ class HomeFragment : Fragment() {
                         (binding.homeExpandedRecycler.adapter as? SearchAdapter?)?.apply {
                             withContext(Dispatchers.Main) {
                                 hasNext = newExpand.hasNext
-                                updateList(newExpand.list.list)
+                                cardList.clear()
+                                cardList.addAll(newExpand.list.list)
+                                notifyDataSetChanged()
                             }
                         }
                     }

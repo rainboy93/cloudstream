@@ -8,7 +8,7 @@ import com.lagradost.cloudstream3.mainPageOf
 class TvPhimProvider : MainAPI() {
 
     override var mainUrl = "https://tvphim.us"
-    override var name = "Blu Phim"
+    override var name = "TV Phim"
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
     override var lang = "vi"

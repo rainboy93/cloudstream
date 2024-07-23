@@ -24,6 +24,7 @@ import com.lagradost.cloudstream3.newHomePageResponse
 import com.lagradost.cloudstream3.newMovieLoadResponse
 import com.lagradost.cloudstream3.newTvSeriesLoadResponse
 import com.lagradost.cloudstream3.plugins.toInteger
+import com.lagradost.cloudstream3.toRatingInt
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.Qualities
 import org.json.JSONArray
@@ -36,7 +37,7 @@ class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
     override var mainUrl = "https://bluphim.art"
     override var name = "Blu Phim"
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
-
+    override val hasDownloadSupport: Boolean = false
     override var lang = "vi"
 
     override val hasMainPage = true
@@ -160,7 +161,7 @@ class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
                 this.year = year
                 this.plot = description
                 this.tags = tags
-                this.rating = rating.toInteger()
+                this.rating = rating.toRatingInt()
                 addActors(actors)
                 addTrailer(youtubeTrailer)
                 this.recommendations = recommendations
@@ -176,7 +177,7 @@ class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
                 this.year = year
                 this.plot = description
                 this.tags = tags
-                this.rating = rating.toInteger()
+                this.rating = rating.toRatingInt()
                 addActors(actors)
                 addTrailer(youtubeTrailer)
                 this.recommendations = recommendations
@@ -337,7 +338,7 @@ class BluPhimProvider(val plugin: BluPhimPlugin) : MainAPI() {
             url = href,
             posterUrl = fixUrl(img),
             type = TvType.Movie,
-            apiName = "Blu phim"
+            apiName = "Blu Phim"
         )
     }
 }

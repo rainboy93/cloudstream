@@ -240,6 +240,7 @@ class HomeViewModel : ViewModel() {
                 if (next is Resource.Success) {
                     val newList = next.value.firstOrNull()?.items?.firstOrNull()
                     if (newList != null && current.url.isNotEmpty()) {
+                        lock -= name
                         return ExpandableHomepageList(
                             newList,
                             1,

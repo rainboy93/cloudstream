@@ -97,7 +97,7 @@ object APIHolder {
     }
 
     fun getApiFromNameNull(apiName: String?): MainAPI? {
-        if (apiName == null) return null
+        if (apiName == null) return allProviders.firstOrNull()
         synchronized(allProviders) {
             initMap()
             synchronized(apis) {
@@ -624,7 +624,7 @@ abstract class MainAPI {
     open val hasChromecastSupport = true
 
     /**If all links are encrypted then set this to false*/
-    open val hasDownloadSupport = true
+    open val hasDownloadSupport = false
 
     /**Used for testing and can be used to disable the providers if WebView is not available*/
     open val usesWebView = false
