@@ -44,6 +44,7 @@ import com.lagradost.cloudstream3.plugins.RepositoryManager.getRepoPlugins
 import com.lagradost.cloudstream3.plugins.blog.BlogTruyenPlugin
 import com.lagradost.cloudstream3.plugins.bluphim.BluPhimPlugin
 import com.lagradost.cloudstream3.plugins.bluphim.Phim1080Plugin
+import com.lagradost.cloudstream3.plugins.hdo.TMDBPlugin
 import com.lagradost.cloudstream3.plugins.motchill.MotChillPlugin
 import com.lagradost.cloudstream3.plugins.nguonc.NguonCPlugin
 import com.lagradost.cloudstream3.plugins.ophim.OPhimPlugin
@@ -484,7 +485,8 @@ object PluginManager {
             Phim1080Plugin(),
             VuiGhePlugin(),
             OPhimPlugin(),
-            BlogTruyenPlugin()
+            BlogTruyenPlugin(),
+            TMDBPlugin()
         ).forEach {
             if (!plugins.contains(it.provider.mainUrl)) {
                 loadFixedPlugin(context, it)

@@ -93,7 +93,9 @@ open class ParentItemAdapter(
                 fragment = fragment,
                 id = id + position + 100,
                 clickCallback = {
-                    if (it.action == SEARCH_ACTION_LOAD && it.card.url.contains("tuyen-tap")) {
+                    val isExpand = it.card.url.contains("tuyen-tap") ||
+                            (it.card.apiName == "TMDB" && it.card.url.contains("tv"))
+                    if (it.action == SEARCH_ACTION_LOAD && isExpand) {
                         moreInfoClickCallback(
                             HomeViewModel.ExpandableHomepageList(
                                 HomePageList(
