@@ -22,6 +22,9 @@ import com.lagradost.cloudstream3.mvvm.safeApiCall
 import com.lagradost.cloudstream3.newHomePageResponse
 import com.lagradost.cloudstream3.newMovieLoadResponse
 import com.lagradost.cloudstream3.newTvSeriesLoadResponse
+import com.lagradost.cloudstream3.plugins.getExtra
+import com.lagradost.cloudstream3.plugins.removeExtra
+import com.lagradost.cloudstream3.plugins.withExtraData
 import com.lagradost.cloudstream3.toRatingInt
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.Qualities
@@ -165,22 +168,31 @@ class TMDBProvider : MainAPI() {
     }
 
     private suspend fun loadTVSeasonsDetail(url: String): TvSeriesLoadResponse {
-        val id = url.substringAfter("tv/").substringBefore("/season")
-        val seasonNumber = url.substringAfter("season/").substringBefore("?")
-        val response = app.get((url).appendApiKey()).parsedSafe<TVSeasonsDetailResponse>()
+        val extraData = url.getExtra()
+        val newUrl = url.removeExtra()
+        val id = newUrl.substringAfter("tv/").substringBefore("/season")
+        val seasonNumber = newUrl.substringAfter("season/").substringBefore("?")
+        val response = app.get((newUrl).appendApiKey()).parsedSafe<TVSeasonsDetailResponse>()
+        val recommendations = app.get("$mainUrl/tv/$id/recommendations".appendApiKey())
+            .parsedSafe<MoviesResponse>()
+            ?.movies
+            ?.map { it.toSearchResponse(false) }
+            ?: listOf()
         val episodes = response?.episodes?.map {
             Episode(
                 data = "tv|$id|$seasonNumber|${it.seasonNumber}",
                 name = it.name,
                 episode = it.episodeNumber,
-                posterUrl = it.stillPath.imageUrl()
+                posterUrl = it.stillPath.imageUrl(),
+                description = it.overview
             )
         } ?: listOf()
-        return newTvSeriesLoadResponse(response?.name ?: "", url, TvType.TvSeries, episodes) {
+        return newTvSeriesLoadResponse(response?.name ?: "", newUrl, TvType.TvSeries, episodes) {
             this.posterUrl = response?.posterPath.imageUrl()
             this.year = response?.airDate?.split("-")?.firstOrNull()?.toIntOrNull()
-            this.plot = ""
+            this.plot = extraData?.overview
             this.rating = response?.voteAverage.toRatingInt()
+            this.recommendations = recommendations
         }
     }
 
@@ -201,7 +213,9 @@ class TMDBProvider : MainAPI() {
         val url = fixUrl("tv/${response?.id}/season/${seasonNumber}".appendApiKey())
         return LiveSearchResponse(
             name = "${response?.name} ($name)",
-            url = url,
+            url = url.withExtraData(
+                ExtraData(response?.overview ?: "")
+            ),
             posterUrl = posterPath.imageUrl(),
             type = TvType.TvSeries,
             apiName = "TMDB"
@@ -218,25 +232,6 @@ class TMDBProvider : MainAPI() {
             "$this&api_key=$API_KEY&include_adult=false&include_video=false&language=vi-VN"
         } else {
             "$this?api_key=$API_KEY&include_adult=false&include_video=false&language=vi-VN"
-        }
-    }
-
-    private fun String.withExtraData(extraData: ExtraData): String {
-        val extra = GsonUtils.toJson(extraData)
-        return "${this}&extra=$extra"
-    }
-
-    private fun String.removeExtra(): String {
-        return this.substringBefore("&extra=")
-    }
-
-    private fun String.getExtra(): ExtraData? {
-        val extra = substringAfter("&extra=")
-        return try {
-            GsonUtils.fromJson(extra, ExtraData::class.java)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
         }
     }
 

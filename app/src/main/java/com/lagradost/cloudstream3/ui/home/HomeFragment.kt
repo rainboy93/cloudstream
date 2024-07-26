@@ -55,7 +55,6 @@ import com.lagradost.cloudstream3.ui.settings.Globals.TV
 import com.lagradost.cloudstream3.ui.settings.Globals.isLayout
 import com.lagradost.cloudstream3.utils.AppUtils.isRecyclerScrollable
 import com.lagradost.cloudstream3.utils.AppUtils.loadSearchResult
-import com.lagradost.cloudstream3.utils.AppUtils.ownHide
 import com.lagradost.cloudstream3.utils.AppUtils.setDefaultFocus
 import com.lagradost.cloudstream3.utils.Coroutines.ioSafe
 import com.lagradost.cloudstream3.utils.DataStoreHelper
@@ -188,8 +187,8 @@ class HomeFragment : Fragment() {
                 SearchAdapter(item.list.toMutableList(), binding.homeExpandedRecycler) { callback ->
                     handleSearchClickCallback(callback)
                     if (callback.action == SEARCH_ACTION_LOAD || callback.action == SEARCH_ACTION_PLAY_FILE) {
-                        bottomSheetDialogBuilder.ownHide() // we hide here because we want to resume it later
-                        //bottomSheetDialogBuilder.dismissSafe(this)
+//                        bottomSheetDialogBuilder.ownHide() // we hide here because we want to resume it later
+                        bottomSheetDialogBuilder.dismissSafe(this)
                     }
                 }.apply {
                     hasNext = expand.hasNext

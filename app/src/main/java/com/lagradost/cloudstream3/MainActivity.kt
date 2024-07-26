@@ -138,8 +138,6 @@ import com.lagradost.cloudstream3.utils.AppUtils.loadCache
 import com.lagradost.cloudstream3.utils.AppUtils.loadRepository
 import com.lagradost.cloudstream3.utils.AppUtils.loadResult
 import com.lagradost.cloudstream3.utils.AppUtils.loadSearchResult
-import com.lagradost.cloudstream3.utils.AppUtils.ownHide
-import com.lagradost.cloudstream3.utils.AppUtils.ownShow
 import com.lagradost.cloudstream3.utils.AppUtils.setDefaultFocus
 import com.lagradost.cloudstream3.utils.BackupUtils.backup
 import com.lagradost.cloudstream3.utils.BackupUtils.setUpBackup
@@ -731,7 +729,6 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener,
         broadcastIntent.setClass(this, VideoDownloadRestartReceiver::class.java)
         this.sendBroadcast(broadcastIntent)
         afterPluginsLoadedEvent -= ::onAllPluginsLoaded
-        bottomSheetDialog?.ownHide()
         super.onDestroy()
     }
 
@@ -817,7 +814,6 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener,
             ViewModelProvider(this)[SyncViewModel::class.java]
         homeViewModel =
             ViewModelProvider(this)[HomeViewModel::class.java]
-        bottomSheetDialog?.ownShow()
         return super.onCreateView(name, context, attrs)
     }
 
