@@ -1,4 +1,4 @@
-package com.lagradost.cloudstream3.plugins.hdo
+package com.lagradost.cloudstream3.plugins.tmdb
 
 
 import androidx.annotation.Keep

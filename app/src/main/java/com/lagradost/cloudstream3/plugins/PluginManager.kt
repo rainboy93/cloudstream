@@ -44,12 +44,12 @@ import com.lagradost.cloudstream3.plugins.RepositoryManager.getRepoPlugins
 import com.lagradost.cloudstream3.plugins.blog.BlogTruyenPlugin
 import com.lagradost.cloudstream3.plugins.bluphim.BluPhimPlugin
 import com.lagradost.cloudstream3.plugins.bluphim.Phim1080Plugin
-import com.lagradost.cloudstream3.plugins.hdo.TMDBPlugin
 import com.lagradost.cloudstream3.plugins.motchill.MotChillPlugin
 import com.lagradost.cloudstream3.plugins.nguonc.NguonCPlugin
 import com.lagradost.cloudstream3.plugins.ophim.OPhimPlugin
 import com.lagradost.cloudstream3.plugins.phimmoichill.PhimmoichillProviderPlugin
 import com.lagradost.cloudstream3.plugins.pidtap.PidtapPlugin
+import com.lagradost.cloudstream3.plugins.tmdb.TMDBPlugin
 import com.lagradost.cloudstream3.plugins.vebo.VeBoPlugin
 import com.lagradost.cloudstream3.plugins.vuighe.VuiGhePlugin
 import com.lagradost.cloudstream3.ui.result.UiText

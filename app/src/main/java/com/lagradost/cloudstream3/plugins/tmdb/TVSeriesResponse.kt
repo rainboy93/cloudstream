@@ -1,11 +1,11 @@
-package com.lagradost.cloudstream3.plugins.hdo
+package com.lagradost.cloudstream3.plugins.tmdb
 
 
 import androidx.annotation.Keep
 import com.fasterxml.jackson.annotation.JsonProperty
 
 @Keep
-data class TVSeriesDetailResponse(
+data class TVSeriesResponse(
     @JsonProperty("adult")
     val adult: Boolean? = false,
     @JsonProperty("backdrop_path")
@@ -57,7 +57,7 @@ data class TVSeriesDetailResponse(
     @JsonProperty("production_countries")
     val productionCountries: List<ProductionCountry?>? = listOf(),
     @JsonProperty("seasons")
-    val seasons: List<Season>? = listOf(),
+    val seasons: List<Season?>? = listOf(),
     @JsonProperty("spoken_languages")
     val spokenLanguages: List<SpokenLanguage?>? = listOf(),
     @JsonProperty("status")

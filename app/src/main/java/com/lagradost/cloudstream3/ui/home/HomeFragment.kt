@@ -197,48 +197,45 @@ class HomeFragment : Fragment() {
                     hasNext = expand.hasNext
                 }
 
-            if (expand.currentPage == 0) {
-                ioSafe {
-                    expandCallback?.invoke(expand.list.name)?.let { newExpand ->
-                        (binding.homeExpandedRecycler.adapter as? SearchAdapter?)?.apply {
-                            withContext(Dispatchers.Main) {
-                                hasNext = newExpand.hasNext
-                                cardList.clear()
-                                cardList.addAll(newExpand.list.list)
-                                notifyDataSetChanged()
-                            }
+            ioSafe {
+                expandCallback?.invoke(expand.list.name)?.let { newExpand ->
+                    (binding.homeExpandedRecycler.adapter as? SearchAdapter?)?.apply {
+                        withContext(Dispatchers.Main) {
+                            hasNext = newExpand.hasNext
+                            cardList.clear()
+                            cardList.addAll(newExpand.list.list)
+                            notifyDataSetChanged()
                         }
                     }
                 }
-            } else {
-                binding.homeExpandedRecycler.addOnScrollListener(object :
-                    RecyclerView.OnScrollListener() {
-                    var expandCount = 0
-                    val name = expand.list.name
+            }
+            binding.homeExpandedRecycler.addOnScrollListener(object :
+                RecyclerView.OnScrollListener() {
+                var expandCount = 0
+                val name = expand.list.name
 
-                    override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
-                        super.onScrollStateChanged(recyclerView, newState)
+                override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+                    super.onScrollStateChanged(recyclerView, newState)
 
-                        val adapter = recyclerView.adapter
-                        if (adapter !is SearchAdapter) return
+                    val adapter = recyclerView.adapter
+                    if (adapter !is SearchAdapter) return
 
-                        val count = adapter.itemCount
-                        val currentHasNext = adapter.hasNext
-                        //!recyclerView.canScrollVertically(1)
-                        if (!recyclerView.isRecyclerScrollable() && currentHasNext && expandCount != count) {
-                            expandCount = count
-                            ioSafe {
-                                expandCallback?.invoke(name)?.let { newExpand ->
-                                    (recyclerView.adapter as? SearchAdapter?)?.apply {
-                                        hasNext = newExpand.hasNext
-                                        updateList(newExpand.list.list)
-                                    }
+                    val count = adapter.itemCount
+                    val currentHasNext = adapter.hasNext
+                    //!recyclerView.canScrollVertically(1)
+                    if (!recyclerView.isRecyclerScrollable() && currentHasNext && expandCount != count) {
+                        expandCount = count
+                        ioSafe {
+                            expandCallback?.invoke(name)?.let { newExpand ->
+                                (recyclerView.adapter as? SearchAdapter?)?.apply {
+                                    hasNext = newExpand.hasNext
+                                    updateList(newExpand.list.list)
                                 }
                             }
                         }
                     }
-                })
-            }
+                }
+            })
 
             val spanListener = { span: Int ->
                 binding.homeExpandedRecycler.spanCount = span

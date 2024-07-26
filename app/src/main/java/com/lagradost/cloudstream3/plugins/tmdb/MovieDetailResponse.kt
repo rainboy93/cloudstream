@@ -1,4 +1,4 @@
-package com.lagradost.cloudstream3.plugins.hdo
+package com.lagradost.cloudstream3.plugins.tmdb
 
 
 import androidx.annotation.Keep
@@ -55,7 +55,7 @@ data class MovieDetailResponse(
     @JsonProperty("video")
     val video: Boolean? = false,
     @JsonProperty("vote_average")
-    val voteAverage: Double? = 0.0,
+    val voteAverage: String? = "",
     @JsonProperty("vote_count")
     val voteCount: Int? = 0
 ) {
