@@ -1010,6 +1010,11 @@ interface SearchResponse {
     var quality: SearchQuality?
 }
 
+fun SearchResponse.isExpand(): Boolean {
+    return url.contains("tuyen-tap") ||
+            (apiName == "TMDB" && url.contains("tv"))
+}
+
 fun MainAPI.newMovieSearchResponse(
     name: String,
     url: String,

@@ -11,6 +11,7 @@ import com.lagradost.cloudstream3.HomePageList
 import com.lagradost.cloudstream3.LoadResponse
 import com.lagradost.cloudstream3.R
 import com.lagradost.cloudstream3.databinding.HomepageParentBinding
+import com.lagradost.cloudstream3.isExpand
 import com.lagradost.cloudstream3.mvvm.logError
 import com.lagradost.cloudstream3.ui.BaseAdapter
 import com.lagradost.cloudstream3.ui.BaseDiffCallback
@@ -93,9 +94,7 @@ open class ParentItemAdapter(
                 fragment = fragment,
                 id = id + position + 100,
                 clickCallback = {
-                    val isExpand = it.card.url.contains("tuyen-tap") ||
-                            (it.card.apiName == "TMDB" && it.card.url.contains("tv"))
-                    if (it.action == SEARCH_ACTION_LOAD && isExpand) {
+                    if (it.action == SEARCH_ACTION_LOAD && it.card.isExpand()) {
                         moreInfoClickCallback(
                             HomeViewModel.ExpandableHomepageList(
                                 HomePageList(

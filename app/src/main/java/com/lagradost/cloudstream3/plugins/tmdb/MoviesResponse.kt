@@ -44,6 +44,10 @@ data class MoviesResponse(
         @JsonProperty("vote_average")
         val voteAverage: Double? = 0.0,
         @JsonProperty("vote_count")
-        val voteCount: Int? = 0
+        val voteCount: Int? = 0,
+        @JsonProperty("media_type")
+        val mediaType: String? = null,
+        @JsonProperty("name")
+        val name: String? = "",
     )
 }

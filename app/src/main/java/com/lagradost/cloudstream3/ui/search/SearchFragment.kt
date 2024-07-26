@@ -42,6 +42,7 @@ import com.lagradost.cloudstream3.SearchResponse
 import com.lagradost.cloudstream3.TvType
 import com.lagradost.cloudstream3.databinding.FragmentSearchBinding
 import com.lagradost.cloudstream3.databinding.HomeSelectMainpageBinding
+import com.lagradost.cloudstream3.isExpand
 import com.lagradost.cloudstream3.mvvm.Resource
 import com.lagradost.cloudstream3.mvvm.logError
 import com.lagradost.cloudstream3.mvvm.observe
@@ -52,6 +53,7 @@ import com.lagradost.cloudstream3.ui.home.HomeFragment.Companion.bindChips
 import com.lagradost.cloudstream3.ui.home.HomeFragment.Companion.currentSpan
 import com.lagradost.cloudstream3.ui.home.HomeFragment.Companion.loadHomepageList
 import com.lagradost.cloudstream3.ui.home.HomeFragment.Companion.updateChips
+import com.lagradost.cloudstream3.ui.home.HomeViewModel
 import com.lagradost.cloudstream3.ui.home.ParentItemAdapter
 import com.lagradost.cloudstream3.ui.result.FOCUS_SELF
 import com.lagradost.cloudstream3.ui.result.setLinearListLayout
@@ -90,7 +92,7 @@ class SearchFragment : Fragment() {
 
         fun newInstance(query: String): Bundle {
             return Bundle().apply {
-                if(query.isNotBlank()) putString(SEARCH_QUERY, query)
+                if (query.isNotBlank()) putString(SEARCH_QUERY, query)
             }
         }
     }
@@ -98,6 +100,8 @@ class SearchFragment : Fragment() {
     private val searchViewModel: SearchViewModel by activityViewModels()
     private var bottomSheetDialog: BottomSheetDialog? = null
     var binding: FragmentSearchBinding? = null
+
+    private val homeViewModel: HomeViewModel by activityViewModels()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -111,10 +115,11 @@ class SearchFragment : Fragment() {
 
 
         binding = try {
-            val layout = if (isLayout(TV or EMULATOR)) R.layout.fragment_search_tv else R.layout.fragment_search
+            val layout =
+                if (isLayout(TV or EMULATOR)) R.layout.fragment_search_tv else R.layout.fragment_search
             val root = inflater.inflate(layout, container, false)
             FragmentSearchBinding.bind(root)
-        } catch (t : Throwable) {
+        } catch (t: Throwable) {
             FragmentSearchBinding.inflate(inflater)
         }
 
@@ -163,7 +168,7 @@ class SearchFragment : Fragment() {
     fun search(query: String?) {
         if (query == null) return
         // don't resume state from prev search
-        (binding?.searchMasterRecycler?.adapter as? BaseAdapter<*,*>)?.clear()
+        (binding?.searchMasterRecycler?.adapter as? BaseAdapter<*, *>)?.clear()
         context?.let { ctx ->
             val default = enumValues<TvType>().sorted().filter { it != TvType.NSFW }
                 .map { it.ordinal.toString() }.toSet()
@@ -226,7 +231,21 @@ class SearchFragment : Fragment() {
                     ArrayList(),
                     searchAutofitResults,
                 ) { callback ->
-                    SearchHelper.handleSearchClickCallback(callback)
+                    if (callback.action == SEARCH_ACTION_LOAD && callback.card.isExpand()) {
+                        HomeViewModel.ExpandableHomepageList(
+                            HomePageList(
+                                callback.card.name,
+                                listOf(callback.card)
+                            ),
+                            0,
+                            true,
+                            url = callback.card.url
+                        ).run {
+                            homeViewModel.popup(this)
+                        }
+                    } else {
+                        SearchHelper.handleSearchClickCallback(callback)
+                    }
                 }
 
             searchRoot.findViewById<TextView>(R.id.search_src_text)?.tag = "tv_no_focus_tag"
@@ -262,11 +281,12 @@ class SearchFragment : Fragment() {
 
                 builder.behavior.state = BottomSheetBehavior.STATE_EXPANDED
 
-                val selectMainpageBinding: HomeSelectMainpageBinding = HomeSelectMainpageBinding.inflate(
-                    builder.layoutInflater,
-                    null,
-                    false
-                )
+                val selectMainpageBinding: HomeSelectMainpageBinding =
+                    HomeSelectMainpageBinding.inflate(
+                        builder.layoutInflater,
+                        null,
+                        false
+                    )
                 builder.setContentView(selectMainpageBinding.root)
                 builder.show()
                 builder.let { dialog ->
@@ -335,7 +355,10 @@ class SearchFragment : Fragment() {
                         if (selectedSearchTypes.toSet() != list.toSet()) {
                             selectedSearchTypes.clear()
                             selectedSearchTypes.addAll(list)
-                            updateChips(binding?.tvtypesChipsScroll?.tvtypesChips, selectedSearchTypes)
+                            updateChips(
+                                binding?.tvtypesChipsScroll?.tvtypesChips,
+                                selectedSearchTypes
+                            )
 
                         }
                     }
@@ -361,7 +384,7 @@ class SearchFragment : Fragment() {
                         selectedApis = currentSelectedApis
 
                         // run search when dialog is close
-                        if(previousSelectedApis != selectedApis.toSet() || previousSelectedSearchTypes != selectedSearchTypes.toSet()) {
+                        if (previousSelectedApis != selectedApis.toSet() || previousSelectedSearchTypes != selectedSearchTypes.toSet()) {
                             search(binding?.mainSearch?.query?.toString())
                         }
                     }
@@ -418,6 +441,7 @@ class SearchFragment : Fragment() {
                                 removeKeys("$currentAccount/$SEARCH_HISTORY_KEY")
                                 searchViewModel.updateHistory()
                             }
+
                             DialogInterface.BUTTON_NEGATIVE -> {
                             }
                         }
@@ -453,17 +477,21 @@ class SearchFragment : Fragment() {
                 is Resource.Success -> {
                     it.value.let { data ->
                         if (data.isNotEmpty()) {
-                            (binding?.searchAutofitResults?.adapter as? SearchAdapter)?.updateList(data)
+                            (binding?.searchAutofitResults?.adapter as? SearchAdapter)?.updateList(
+                                data
+                            )
                         }
                     }
                     searchExitIcon?.alpha = 1f
                     binding?.searchLoadingBar?.alpha = 0f
                 }
+
                 is Resource.Failure -> {
                     // Toast.makeText(activity, "Server error", Toast.LENGTH_LONG).show()
                     searchExitIcon?.alpha = 1f
                     binding?.searchLoadingBar?.alpha = 0f
                 }
+
                 is Resource.Loading -> {
                     searchExitIcon?.alpha = 0f
                     binding?.searchLoadingBar?.alpha = 1f
@@ -512,9 +540,13 @@ class SearchFragment : Fragment() {
             ParentItemAdapter(fragment = this, id = "masterAdapter".hashCode(), { callback ->
                 SearchHelper.handleSearchClickCallback(callback)
             }, { item ->
-                bottomSheetDialog = activity?.loadHomepageList(item, dismissCallback = {
-                    bottomSheetDialog = null
-                })
+                bottomSheetDialog = activity?.loadHomepageList(item,
+                    expandCallback = {
+                        homeViewModel.expandAndReturn(it, if (item.url.isEmpty()) null else item)
+                    },
+                    dismissCallback = {
+                        bottomSheetDialog = null
+                    })
             })
 
         val historyAdapter = SearchHistoryAdaptor(mutableListOf()) { click ->
@@ -523,13 +555,18 @@ class SearchFragment : Fragment() {
                 SEARCH_HISTORY_OPEN -> {
                     searchViewModel.clearSearch()
                     if (searchItem.type.isNotEmpty())
-                        updateChips(binding?.tvtypesChipsScroll?.tvtypesChips, searchItem.type.toMutableList())
+                        updateChips(
+                            binding?.tvtypesChipsScroll?.tvtypesChips,
+                            searchItem.type.toMutableList()
+                        )
                     binding?.mainSearch?.setQuery(searchItem.searchText, true)
                 }
+
                 SEARCH_HISTORY_REMOVE -> {
                     removeKey("$currentAccount/$SEARCH_HISTORY_KEY", searchItem.key)
                     searchViewModel.updateHistory()
                 }
+
                 else -> {
                     // wth are you doing???
                 }
@@ -547,8 +584,9 @@ class SearchFragment : Fragment() {
             searchMasterRecycler.layoutManager = GridLayoutManager(context, 1)
 
             // Automatically search the specified query, this allows the app search to launch from intent
-            var sq = arguments?.getString(SEARCH_QUERY) ?: savedInstanceState?.getString(SEARCH_QUERY)
-            if(sq.isNullOrBlank()) {
+            var sq =
+                arguments?.getString(SEARCH_QUERY) ?: savedInstanceState?.getString(SEARCH_QUERY)
+            if (sq.isNullOrBlank()) {
                 sq = MainActivity.nextSearchQuery
             }
 
@@ -566,14 +604,14 @@ class SearchFragment : Fragment() {
         // SubtitlesFragment.push(activity)
         //searchViewModel.search("iron man")
         //(activity as AppCompatActivity).loadResult("https://shiro.is/overlord-dubbed", "overlord-dubbed", "Shiro")
-/*
-        (activity as AppCompatActivity?)?.supportFragmentManager.beginTransaction()
-            .setCustomAnimations(R.anim.enter_anim,
-                R.anim.exit_anim,
-                R.anim.pop_enter,
-                R.anim.pop_exit)
-            .add(R.id.homeRoot, PlayerFragment.newInstance(PlayerData(0, null,0)))
-            .commit()*/
+        /*
+                (activity as AppCompatActivity?)?.supportFragmentManager.beginTransaction()
+                    .setCustomAnimations(R.anim.enter_anim,
+                        R.anim.exit_anim,
+                        R.anim.pop_enter,
+                        R.anim.pop_exit)
+                    .add(R.id.homeRoot, PlayerFragment.newInstance(PlayerData(0, null,0)))
+                    .commit()*/
     }
 
 }

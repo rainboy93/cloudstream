@@ -41,7 +41,6 @@ import com.lagradost.cloudstream3.databinding.TvtypesChipsBinding
 import com.lagradost.cloudstream3.mvvm.Resource
 import com.lagradost.cloudstream3.mvvm.logError
 import com.lagradost.cloudstream3.mvvm.observe
-import com.lagradost.cloudstream3.mvvm.observeNullable
 import com.lagradost.cloudstream3.ui.APIRepository.Companion.noneApi
 import com.lagradost.cloudstream3.ui.APIRepository.Companion.randomApi
 import com.lagradost.cloudstream3.ui.account.AccountHelper.showAccountSelectLinear
@@ -57,7 +56,6 @@ import com.lagradost.cloudstream3.ui.settings.Globals.isLayout
 import com.lagradost.cloudstream3.utils.AppUtils.isRecyclerScrollable
 import com.lagradost.cloudstream3.utils.AppUtils.loadSearchResult
 import com.lagradost.cloudstream3.utils.AppUtils.ownHide
-import com.lagradost.cloudstream3.utils.AppUtils.ownShow
 import com.lagradost.cloudstream3.utils.AppUtils.setDefaultFocus
 import com.lagradost.cloudstream3.utils.Coroutines.ioSafe
 import com.lagradost.cloudstream3.utils.DataStoreHelper
@@ -459,7 +457,6 @@ class HomeFragment : Fragment() {
         //homeViewModel =
         //     ViewModelProvider(this).get(HomeViewModel::class.java)
 
-        bottomSheetDialog?.ownShow()
         val layout =
             if (isLayout(TV or EMULATOR)) R.layout.fragment_home_tv else R.layout.fragment_home
         val root = inflater.inflate(layout, container, false)
@@ -475,8 +472,6 @@ class HomeFragment : Fragment() {
     }
 
     override fun onDestroyView() {
-
-        bottomSheetDialog?.ownHide()
         binding = null
         super.onDestroyView()
     }
@@ -509,8 +504,6 @@ class HomeFragment : Fragment() {
 
     private var currentApiName: String? = null
     private var toggleRandomButton = false
-
-    private var bottomSheetDialog: BottomSheetDialog? = null
 
     // https://github.com/vivchar/RendererRecyclerViewAdapter/blob/185251ee9d94fb6eb3e063b00d646b745186c365/example/src/main/java/com/github/vivchar/example/pages/github/GithubFragment.kt#L32
     // cry about it, but this is android we are talking about, we cant do the most simple shit without making a global variable
@@ -657,29 +650,6 @@ class HomeFragment : Fragment() {
 
         //context?.fixPaddingStatusbarView(home_statusbar)
         //context?.fixPaddingStatusbar(home_padding)
-
-        observeNullable(homeViewModel.popup) { item ->
-            if (item == null) {
-                bottomSheetDialog?.dismissSafe()
-                bottomSheetDialog = null
-                return@observeNullable
-            }
-
-            // don't recreate
-            if (bottomSheetDialog != null) {
-                return@observeNullable
-            }
-
-            val (items, delete) = item
-
-            bottomSheetDialog = activity?.loadHomepageList(items, expandCallback = {
-                homeViewModel.expandAndReturn(it, if (items.url.isEmpty()) null else items)
-            }, dismissCallback = {
-                homeViewModel.popup(null)
-                bottomSheetDialog = null
-            }, deleteCallback = delete)
-        }
-
         homeViewModel.reloadStored()
         homeViewModel.loadAndCancel(DataStoreHelper.currentHomePage, false)
         //loadHomePage(false)

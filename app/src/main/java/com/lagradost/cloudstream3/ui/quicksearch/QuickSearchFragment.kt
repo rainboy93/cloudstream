@@ -14,6 +14,7 @@ import androidx.appcompat.widget.SearchView
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.GridLayoutManager
 import com.google.android.material.bottomsheet.BottomSheetDialog
@@ -24,12 +25,15 @@ import com.lagradost.cloudstream3.CommonActivity.activity
 import com.lagradost.cloudstream3.HomePageList
 import com.lagradost.cloudstream3.R
 import com.lagradost.cloudstream3.databinding.QuickSearchBinding
+import com.lagradost.cloudstream3.isExpand
 import com.lagradost.cloudstream3.mvvm.Resource
 import com.lagradost.cloudstream3.mvvm.logError
 import com.lagradost.cloudstream3.mvvm.observe
 import com.lagradost.cloudstream3.ui.home.HomeFragment
 import com.lagradost.cloudstream3.ui.home.HomeFragment.Companion.loadHomepageList
+import com.lagradost.cloudstream3.ui.home.HomeViewModel
 import com.lagradost.cloudstream3.ui.home.ParentItemAdapter
+import com.lagradost.cloudstream3.ui.search.SEARCH_ACTION_LOAD
 import com.lagradost.cloudstream3.ui.search.SearchAdapter
 import com.lagradost.cloudstream3.ui.search.SearchClickCallback
 import com.lagradost.cloudstream3.ui.search.SearchHelper
@@ -84,7 +88,7 @@ class QuickSearchFragment : Fragment() {
     private var providers: Set<String>? = null
     private lateinit var searchViewModel: SearchViewModel
     var binding: QuickSearchBinding? = null
-
+    private val homeViewModel: HomeViewModel by activityViewModels()
 
     private var bottomSheetDialog: BottomSheetDialog? = null
 
@@ -162,7 +166,21 @@ class QuickSearchFragment : Fragment() {
                     ArrayList(),
                     this,
                 ) { callback ->
-                    SearchHelper.handleSearchClickCallback(callback)
+                    if (callback.action == SEARCH_ACTION_LOAD && callback.card.isExpand()) {
+                        HomeViewModel.ExpandableHomepageList(
+                            HomePageList(
+                                callback.card.name,
+                                listOf(callback.card)
+                            ),
+                            0,
+                            true,
+                            url = callback.card.url
+                        ).run {
+                            homeViewModel.popup(this)
+                        }
+                    } else {
+                        SearchHelper.handleSearchClickCallback(callback)
+                    }
                 }
             }
 
@@ -183,7 +201,15 @@ class QuickSearchFragment : Fragment() {
                     //    else -> SearchHelper.handleSearchClickCallback(activity, callback)
                     //}
                 }, { item ->
-                    bottomSheetDialog = activity?.loadHomepageList(item, dismissCallback = {
+                    bottomSheetDialog = activity?.loadHomepageList(
+                        item,
+                        expandCallback = {
+                            homeViewModel.expandAndReturn(
+                                it,
+                                if (item.url.isEmpty()) null else item
+                            )
+                        },
+                        dismissCallback = {
                         bottomSheetDialog = null
                     })
                 })

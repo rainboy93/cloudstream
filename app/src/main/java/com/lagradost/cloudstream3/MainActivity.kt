@@ -108,6 +108,7 @@ import com.lagradost.cloudstream3.ui.SyncWatchType
 import com.lagradost.cloudstream3.ui.UpdateDialog
 import com.lagradost.cloudstream3.ui.WatchType
 import com.lagradost.cloudstream3.ui.download.DOWNLOAD_NAVIGATE_TO
+import com.lagradost.cloudstream3.ui.home.HomeFragment.Companion.loadHomepageList
 import com.lagradost.cloudstream3.ui.home.HomeViewModel
 import com.lagradost.cloudstream3.ui.player.BasicLink
 import com.lagradost.cloudstream3.ui.player.GeneratorPlayer
@@ -137,6 +138,8 @@ import com.lagradost.cloudstream3.utils.AppUtils.loadCache
 import com.lagradost.cloudstream3.utils.AppUtils.loadRepository
 import com.lagradost.cloudstream3.utils.AppUtils.loadResult
 import com.lagradost.cloudstream3.utils.AppUtils.loadSearchResult
+import com.lagradost.cloudstream3.utils.AppUtils.ownHide
+import com.lagradost.cloudstream3.utils.AppUtils.ownShow
 import com.lagradost.cloudstream3.utils.AppUtils.setDefaultFocus
 import com.lagradost.cloudstream3.utils.BackupUtils.backup
 import com.lagradost.cloudstream3.utils.BackupUtils.setUpBackup
@@ -728,6 +731,7 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener,
         broadcastIntent.setClass(this, VideoDownloadRestartReceiver::class.java)
         this.sendBroadcast(broadcastIntent)
         afterPluginsLoadedEvent -= ::onAllPluginsLoaded
+        bottomSheetDialog?.ownHide()
         super.onDestroy()
     }
 
@@ -802,6 +806,7 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener,
 
     lateinit var viewModel: ResultViewModel2
     lateinit var syncViewModel: SyncViewModel
+    lateinit var homeViewModel: HomeViewModel
 
     /** kinda dirty, however it signals that we should use the watch status as sync or not*/
     var isLocalList: Boolean = false
@@ -810,7 +815,9 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener,
             ViewModelProvider(this)[ResultViewModel2::class.java]
         syncViewModel =
             ViewModelProvider(this)[SyncViewModel::class.java]
-
+        homeViewModel =
+            ViewModelProvider(this)[HomeViewModel::class.java]
+        bottomSheetDialog?.ownShow()
         return super.onCreateView(name, context, attrs)
     }
 
@@ -1136,7 +1143,7 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener,
         } catch (_: Throwable) {
         }
     }
-
+    private var bottomSheetDialog: BottomSheetDialog? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         app.initClient(this)
         val settingsManager = PreferenceManager.getDefaultSharedPreferences(this)
@@ -1413,6 +1420,28 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener,
         observe(viewModel.watchStatus, ::setWatchStatus)
         observe(syncViewModel.userData, ::setUserData)
         observeNullable(viewModel.subscribeStatus, ::setSubscribeStatus)
+
+        observeNullable(homeViewModel.popup) { item ->
+            if (item == null) {
+                bottomSheetDialog?.dismissSafe()
+                bottomSheetDialog = null
+                return@observeNullable
+            }
+
+            // don't recreate
+            if (bottomSheetDialog != null) {
+                return@observeNullable
+            }
+
+            val (items, delete) = item
+
+            bottomSheetDialog = loadHomepageList(items, expandCallback = {
+                homeViewModel.expandAndReturn(it, if (items.url.isEmpty()) null else items)
+            }, dismissCallback = {
+                homeViewModel.popup(null)
+                bottomSheetDialog = null
+            }, deleteCallback = delete)
+        }
 
         observeNullable(viewModel.page) { resource ->
             if (resource == null) {
