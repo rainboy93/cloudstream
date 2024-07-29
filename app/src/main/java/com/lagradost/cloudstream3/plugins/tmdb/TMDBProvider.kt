@@ -1,7 +1,6 @@
 package com.lagradost.cloudstream3.plugins.tmdb
 
 import android.os.Parcelable
-import com.blankj.utilcode.util.GsonUtils
 import com.lagradost.cloudstream3.Episode
 import com.lagradost.cloudstream3.HomePageResponse
 import com.lagradost.cloudstream3.LiveSearchResponse
@@ -164,6 +163,7 @@ class TMDBProvider : MainAPI() {
             this.rating = response?.voteAverage.toRatingInt()
             this.recommendations = recommendations
             this.duration = response?.runtime
+            this.tags = response?.genres?.filter { !it?.name.isNullOrBlank() }?.map { it!!.name!! }
         }
     }
 
@@ -205,7 +205,7 @@ class TMDBProvider : MainAPI() {
             ),
             posterUrl = posterPath.imageUrl(),
             type = if (isMovie) TvType.Movie else TvType.TvSeries,
-            apiName = "TMDB"
+            apiName = "TMDB",
         )
     }
 

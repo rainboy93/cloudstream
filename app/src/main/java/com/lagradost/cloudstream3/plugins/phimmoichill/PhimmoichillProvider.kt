@@ -16,6 +16,7 @@ import com.lagradost.cloudstream3.addSub
 import com.lagradost.cloudstream3.apmap
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.fixUrl
+import com.lagradost.cloudstream3.mainPage
 import com.lagradost.cloudstream3.mainPageOf
 import com.lagradost.cloudstream3.mvvm.safeApiCall
 import com.lagradost.cloudstream3.newAnimeSearchResponse
@@ -23,12 +24,15 @@ import com.lagradost.cloudstream3.newHomePageResponse
 import com.lagradost.cloudstream3.newMovieLoadResponse
 import com.lagradost.cloudstream3.newMovieSearchResponse
 import com.lagradost.cloudstream3.newTvSeriesLoadResponse
+import com.lagradost.cloudstream3.plugins.removeNonNumeric
+import com.lagradost.cloudstream3.plugins.toInteger
 import com.lagradost.cloudstream3.toRatingInt
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkPlayList
 import com.lagradost.cloudstream3.utils.PlayListItem
 import com.lagradost.cloudstream3.utils.Qualities
 import org.jsoup.nodes.Element
+import org.jsoup.select.Evaluator
 import java.net.URLDecoder
 
 class PhimmoichillProvider : MainAPI() {
@@ -45,12 +49,15 @@ class PhimmoichillProvider : MainAPI() {
     )
 
     override val mainPage = mainPageOf(
-        "$mainUrl/list/phim-le/page-" to "Phim Lẻ",
-        "$mainUrl/list/phim-bo/page-" to "Phim Bộ",
-        "$mainUrl/country/phim-han-quoc/page-" to "Phim Hàn Quốc",
-        "$mainUrl/country/phim-trung-quoc/page-" to "Phim Trung Quốc",
-        "$mainUrl/country/phim-thai-lan/page-" to "Phim Thái Lan",
-        "$mainUrl/genre/phim-hoat-hinh/page-" to "Phim Hoạt Hình",
+        mainPage("$mainUrl/list/phim-le/page-", "Phim Lẻ", true),
+        mainPage("$mainUrl/list/phim-bo/page-", "Phim Bộ", true),
+        mainPage("$mainUrl/list/phim-netflix/page-", "Phim Netflix", true),
+        mainPage("$mainUrl/list/phim-dc/page-", "Phim DC Comic", true),
+        mainPage("$mainUrl/list/phim-marvel/page-", "Phim Marvel", true),
+        mainPage("$mainUrl/country/phim-han-quoc/page-", "Phim Hàn Quốc", true),
+        mainPage("$mainUrl/country/phim-trung-quoc/page-", "Phim Trung Quốc", true),
+        mainPage("$mainUrl/country/phim-thai-lan/page-", "Phim Thái Lan", true),
+        mainPage("$mainUrl/genre/phim-hoat-hinh/page-", "Phim Hoạt Hình", true),
     )
 
     override suspend fun getMainPage(
@@ -61,7 +68,7 @@ class PhimmoichillProvider : MainAPI() {
         val home = document.select("li.item").mapNotNull {
             it.toSearchResult()
         }
-        return newHomePageResponse(request.name, home)
+        return newHomePageResponse(request, home)
     }
 
     private fun decode(input: String): String? = URLDecoder.decode(input, "utf-8")
@@ -69,8 +76,15 @@ class PhimmoichillProvider : MainAPI() {
     private fun Element.toSearchResult(): SearchResponse {
         val title = this.selectFirst("p,h3")?.text()?.trim().toString()
         val href = fixUrl(this.selectFirst("a")!!.attr("href"))
-        val posterUrl = decode(this.selectFirst("img")!!.attr("src").substringAfter("url="))
+        val posterUrl = this.selectFirst("img")
+            ?.attr("src")
+            ?.run {
+                decode(this)?.ifBlank {
+                    this@toSearchResult.selectFirst("img")?.attr("data-src") ?: ""
+                }
+            } ?: ""
         val temp = this.select("span.label").text()
+        val year = this.selectFirst(Evaluator.Class("label-quality"))?.text()?.toInteger()
         return if (temp.contains(Regex("\\d"))) {
             val episode = Regex("(\\((\\d+))|(\\s(\\d+))").find(temp)?.groupValues?.map { num ->
                 num.replace(Regex("\\(|\\s"), "")
@@ -78,6 +92,7 @@ class PhimmoichillProvider : MainAPI() {
             newAnimeSearchResponse(title, href, TvType.TvSeries) {
                 this.posterUrl = posterUrl
                 addSub(episode)
+                this.year = year
             }
         } else {
             val quality =
@@ -85,6 +100,7 @@ class PhimmoichillProvider : MainAPI() {
             newMovieSearchResponse(title, href, TvType.Movie) {
                 this.posterUrl = posterUrl
                 addQuality(quality)
+                this.year = year
             }
         }
     }
@@ -131,6 +147,7 @@ class PhimmoichillProvider : MainAPI() {
                     data = href,
                     name = name,
                     episode = episode,
+                    posterUrl = poster
                 )
             }
             newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
@@ -144,6 +161,26 @@ class PhimmoichillProvider : MainAPI() {
                 addTrailer(trailer)
             }
         } else {
+            val duration = document.select("ul.entry-meta.block-film li:nth-child(7)").text()
+                .trim()
+                .split("giờ")
+                .run {
+                    when (size) {
+                        2 -> {
+                            val hour = this[0].trim().toIntOrNull() ?: return@run null
+                            val minute = this[1].removeNonNumeric().toIntOrNull() ?: return@run null
+                            hour * 60 + minute
+                        }
+
+                        1 -> {
+                            this[0].removeNonNumeric().toIntOrNull() ?: return@run null
+                        }
+
+                        else -> {
+                            null
+                        }
+                    }
+                }
             newMovieLoadResponse(title, url, TvType.Movie, link) {
                 this.posterUrl = poster
                 this.year = year
@@ -153,6 +190,7 @@ class PhimmoichillProvider : MainAPI() {
                 addActors(actors)
                 this.recommendations = recommendations
                 addTrailer(trailer)
+                this.duration = duration
             }
         }
     }
