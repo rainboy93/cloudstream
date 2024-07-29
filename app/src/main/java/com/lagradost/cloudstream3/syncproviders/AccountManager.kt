@@ -3,8 +3,15 @@ package com.lagradost.cloudstream3.syncproviders
 import com.lagradost.cloudstream3.AcraApplication.Companion.getKey
 import com.lagradost.cloudstream3.AcraApplication.Companion.removeKeys
 import com.lagradost.cloudstream3.AcraApplication.Companion.setKey
+import com.lagradost.cloudstream3.syncproviders.providers.Addic7ed
+import com.lagradost.cloudstream3.syncproviders.providers.AniListApi
+import com.lagradost.cloudstream3.syncproviders.providers.IndexSubtitleApi
+import com.lagradost.cloudstream3.syncproviders.providers.LocalList
+import com.lagradost.cloudstream3.syncproviders.providers.MALApi
+import com.lagradost.cloudstream3.syncproviders.providers.OpenSubtitlesApi
+import com.lagradost.cloudstream3.syncproviders.providers.SimklApi
+import com.lagradost.cloudstream3.syncproviders.providers.SubDLAPI
 import com.lagradost.cloudstream3.syncproviders.providers.SubScene
-import com.lagradost.cloudstream3.syncproviders.providers.*
 import java.util.concurrent.TimeUnit
 
 abstract class AccountManager(private val defIndex: Int) : AuthAPI {
@@ -17,6 +24,7 @@ abstract class AccountManager(private val defIndex: Int) : AuthAPI {
         val addic7ed = Addic7ed()
         val subScene = SubScene()
         val localListApi = LocalList()
+        val subDlApi = SubDLAPI()
 
         // used to login via app intent
         val OAuth2Apis
@@ -41,10 +49,11 @@ abstract class AccountManager(private val defIndex: Int) : AuthAPI {
 
         val subtitleProviders
             get() = listOf(
-                openSubtitlesApi,
-                indexSubtitlesApi, // they got anti scraping measures in place :(
-                addic7ed,
-                subScene
+//                openSubtitlesApi,
+//                indexSubtitlesApi, // they got anti scraping measures in place :(
+//                addic7ed,
+//                subScene,
+                subDlApi
             )
 
         const val appString = "cloudstreamapp"
