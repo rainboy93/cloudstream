@@ -1,57 +1,58 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-        xmlns:tools="http://schemas.android.com/tools"
-        xmlns:app="http://schemas.android.com/apk/res-auto"
-        android:orientation="vertical"
-        android:layout_width="match_parent"
-        android:background="?attr/primaryGrayBackground"
-        android:layout_height="wrap_content">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/primaryGrayBackground"
+    android:orientation="vertical">
 
     <FrameLayout
-            android:nextFocusDown="@id/home_expanded_recycler"
-
-            android:foreground="?android:attr/selectableItemBackgroundBorderless"
-            android:id="@+id/home_expanded_drag_down"
-            android:padding="12dp"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+        android:id="@+id/home_expanded_drag_down"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:foreground="?android:attr/selectableItemBackgroundBorderless"
+        android:nextFocusDown="@id/home_expanded_recycler"
+        android:padding="12dp">
 
         <requestFocus />
 
         <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
 
             <ImageView
-                    app:tint="?attr/textColor"
-                    android:id="@+id/home_expanded_delete"
-                    android:layout_marginEnd="10dp"
-                    android:layout_gravity="start|center_vertical"
-                    android:src="@drawable/ic_baseline_delete_outline_24"
-                    android:layout_width="30dp"
-                    android:layout_height="match_parent"
-                    android:contentDescription="@string/delete" />
+                android:id="@+id/home_expanded_delete"
+                android:layout_width="30dp"
+                android:layout_height="match_parent"
+                android:layout_gravity="start|center_vertical"
+                android:layout_marginEnd="10dp"
+                android:contentDescription="@string/delete"
+                android:src="@drawable/ic_baseline_delete_outline_24"
+                app:tint="?attr/textColor" />
 
             <TextView
-                    android:id="@+id/home_expanded_text"
-                    style="@style/WatchHeaderText"
-                    tools:text="Trending" />
+                android:id="@+id/home_expanded_text"
+                style="@style/WatchHeaderText"
+                tools:text="Trending" />
         </LinearLayout>
 
         <ImageView
-                android:layout_marginEnd="5dp"
-                android:layout_gravity="end|center_vertical"
-                android:src="@drawable/ic_baseline_keyboard_arrow_down_24"
-                android:layout_width="30dp"
-                android:layout_height="match_parent"
-                android:contentDescription="@string/home_expanded_hide" />
+            android:layout_width="30dp"
+            android:layout_height="match_parent"
+            android:layout_gravity="end|center_vertical"
+            android:layout_marginEnd="5dp"
+            android:contentDescription="@string/home_expanded_hide"
+            android:src="@drawable/ic_baseline_keyboard_arrow_down_24" />
     </FrameLayout>
 
     <com.lagradost.cloudstream3.ui.AutofitRecyclerView
-            android:descendantFocusability="afterDescendants"
-
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:id="@+id/home_expanded_recycler"
-            tools:listitem="@layout/search_result_grid" />
+        android:id="@+id/home_expanded_recycler"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:descendantFocusability="afterDescendants"
+        android:paddingBottom="200dp"
+        tools:listitem="@layout/search_result_grid" />
 </LinearLayout>
