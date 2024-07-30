@@ -99,7 +99,7 @@ open class ParentItemAdapter(
                             HomeViewModel.ExpandableHomepageList(
                                 HomePageList(
                                     it.card.name,
-                                    listOf(it.card)
+                                    listOf()
                                 ),
                                 0,
                                 true,

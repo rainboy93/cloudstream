@@ -107,6 +107,7 @@ class NguonCProvider : MainAPI() {
                     data = href,
                     name = name,
                     episode = episode,
+                    posterUrl = posterUrl
                 )
             }
             newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
@@ -120,6 +121,7 @@ class NguonCProvider : MainAPI() {
             val link = links.firstOrNull()?.attr("href") ?: ""
             newMovieLoadResponse(title, url, TvType.Movie, fixUrl(link)) {
                 this.posterUrl = fixUrl(posterUrl)
+                this.year = year
                 this.plot = description
                 this.rating = rating?.toIntOrNull()
                 addActors(actors)

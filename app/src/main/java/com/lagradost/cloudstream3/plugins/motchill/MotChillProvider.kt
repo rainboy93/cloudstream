@@ -2,9 +2,11 @@ package com.lagradost.cloudstream3.plugins.motchill
 
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.lagradost.cloudstream3.Actor
 import com.lagradost.cloudstream3.Episode
 import com.lagradost.cloudstream3.HomePageResponse
 import com.lagradost.cloudstream3.LoadResponse
+import com.lagradost.cloudstream3.LoadResponse.Companion.addActors
 import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
 import com.lagradost.cloudstream3.MainAPI
 import com.lagradost.cloudstream3.MainPageData
@@ -21,6 +23,7 @@ import com.lagradost.cloudstream3.newHomePageResponse
 import com.lagradost.cloudstream3.newMovieLoadResponse
 import com.lagradost.cloudstream3.newMovieSearchResponse
 import com.lagradost.cloudstream3.newTvSeriesLoadResponse
+import com.lagradost.cloudstream3.plugins.toInteger
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.Qualities
 import org.json.JSONArray
@@ -80,18 +83,34 @@ class MotChillProvider(val plugin: MotChillPlugin) : MainAPI() {
                 ?.selectFirst(Evaluator.Tag("a"))?.attr("href") ?: ""
         )
         val poster = main.selectFirst(Evaluator.Tag("img"))?.attr("src")
-        val year = main.select(Evaluator.Class("text-zinc-400")).text().trim().toIntOrNull()
-        val tvType =
-            if (main.selectFirst(
-                    Evaluator.AttributeWithValueContaining(
-                        "href",
-                        "phim-le"
-                    )
-                ) != null
-            ) TvType.Movie else TvType.TvSeries
-        val description = ""
+        val year = document.selectFirst(Evaluator.AttributeWithValue("name", "video:release_date"))
+            ?.attr("content")
+            ?.split("-")
+            ?.firstOrNull()
+            .toInteger()
+        val tvType = if (main.selectFirst(
+                Evaluator.AttributeWithValueContaining(
+                    "href",
+                    "phim-le"
+                )
+            ) != null
+        ) TvType.Movie else TvType.TvSeries
+        val tags = main.select(Evaluator.AttributeWithValueStarting("href", "/the-loai/"))
+            .map { it.text() }
+        val description = main.select(Evaluator.Class("pb-3"))
+            .firstOrNull {
+                it.text().lowercase().contains("tóm tắt")
+            }
+            ?.selectFirst(Evaluator.Tag("div"))
+            ?.text()
         val trailer = ""
-        val rating = 5
+        val actors = main.select(Evaluator.Class("col-span-6"))
+            .map {
+                Actor(
+                    it.attr("title"),
+                    it.selectFirst(Evaluator.Tag("img"))?.attr("src")
+                ) to ""
+            }
         return if (tvType == TvType.TvSeries) {
             val episodes =
                 main.selectFirst(Evaluator.AttributeWithValueContaining("class", "pt-3 flex"))
@@ -103,22 +122,25 @@ class MotChillProvider(val plugin: MotChillPlugin) : MainAPI() {
                             data = href,
                             name = name,
                             episode = episode,
+                            posterUrl = poster
                         )
                     } ?: listOf()
             newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
                 this.posterUrl = poster
                 this.year = year
                 this.plot = description
-                this.rating = rating
                 addTrailer(trailer)
+                this.addActors(actors)
+                this.tags = tags
             }
         } else {
             newMovieLoadResponse(title, url, TvType.Movie, link) {
                 this.posterUrl = poster
                 this.year = year
                 this.plot = description
-                this.rating = rating
                 addTrailer(trailer)
+                this.addActors(actors)
+                this.tags = tags
             }
         }
     }
@@ -154,7 +176,7 @@ class MotChillProvider(val plugin: MotChillPlugin) : MainAPI() {
         val movieId = contents.first
         val episodeId = contents.second
         val response =
-            app.get("https://motchilltv.us/api/play/get?movieId=$movieId&episodeId=$episodeId&server=0")
+            app.get("$mainUrl/api/play/get?movieId=$movieId&episodeId=$episodeId&server=0")
         val type: Type = object : TypeToken<List<Server>?>() {}.type
         val servers: List<Server> = try {
             gson.fromJson(response.text, type)

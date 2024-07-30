@@ -226,11 +226,11 @@ class PhimmoichillProvider : MainAPI() {
         listOf(
             Pair("https://so-trym.topphimmoi.org/hlspm/$key", "PMFAST"),
             Pair("https://dash.megacdn.xyz/hlspm/$key", "PMHLS"),
-//            Pair("https://dash.megacdn.xyz/dast/$key/index.m3u8", "PMBK"),
+            Pair("https://dash.megacdn.xyz/dast/$key/index.m3u8", "MEGA"),
             Pair("https://dash.motchills.net/raw/$key/index.m3u8", "PMBK"),
         ).apmap { (link, source) ->
             safeApiCall {
-                if (source == "PMBK") {
+                if (source == "PMBK" || source == "MEGA") {
                     callback.invoke(
                         ExtractorLink(
                             source,
