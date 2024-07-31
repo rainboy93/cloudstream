@@ -60,7 +60,7 @@ class GrdLayoutManager(val context: Context, _spanCount: Int) :
         val offset = calcOffsetToNextView(direction)
 
         if (hitBorder(fromPos, offset)) {
-            return fromPos
+            return fromPos + offset / abs(offset)
         }
 
         return fromPos + offset
