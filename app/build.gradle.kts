@@ -216,7 +216,7 @@ dependencies {
     // PlayBack
     implementation("com.jaredrummler:colorpicker:1.1.0") // Subtitle Color Picker
     implementation("com.github.recloudstream:media-ffmpeg:1.1.0") // Custom FF-MPEG Lib for Audio Codecs
-    implementation("com.github.TeamNewPipe.NewPipeExtractor:NewPipeExtractor:0.24.1") /* For Trailers
+    implementation("com.github.TeamNewPipe.NewPipeExtractor:NewPipeExtractor:c343e31ed2142f268042891a9e213ce48e764401") /* For Trailers
     ^ Update to Latest Commits if Trailers Misbehave, github.com/TeamNewPipe/NewPipeExtractor/commits/dev */
     implementation("com.github.albfernandez:juniversalchardet:2.4.0") // Subtitle Decoding
 
