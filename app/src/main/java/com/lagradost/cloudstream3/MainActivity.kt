@@ -88,6 +88,7 @@ import com.lagradost.cloudstream3.mvvm.observeNullable
 import com.lagradost.cloudstream3.network.initClient
 import com.lagradost.cloudstream3.plugins.PluginManager
 import com.lagradost.cloudstream3.plugins.PluginManager.___DO_NOT_CALL_FROM_A_PLUGIN_loadAllOnlinePlugins
+import com.lagradost.cloudstream3.plugins.ophim.OPhimPlugin
 import com.lagradost.cloudstream3.plugins.PluginManager.loadSinglePlugin
 import com.lagradost.cloudstream3.receivers.VideoDownloadRestartReceiver
 import com.lagradost.cloudstream3.services.SubscriptionWorkManager
@@ -1335,6 +1336,14 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener, BiometricCa
                 showToast(R.string.safe_mode_file, Toast.LENGTH_LONG)
             }
         } else if (lastError == null) {
+            // Load built-in plugins
+            OPhimPlugin().load(this)
+
+            // Set OPhimProvider as default homepage if none is selected
+            if (DataStoreHelper.currentHomePage == null) {
+                DataStoreHelper.currentHomePage = "Ổ Phim"
+            }
+
             ioSafe {
                 DataStoreHelper.currentHomePage?.let { homeApi ->
                     mainPluginsLoadedEvent.invoke(loadSinglePlugin(this@MainActivity, homeApi))
@@ -2008,15 +2017,6 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener, BiometricCa
         try {
             if (getKey(HAS_DONE_SETUP_KEY, false) != true) {
                 navController.navigate(R.id.navigation_setup_language)
-                // If no plugins bring up extensions screen
-            } else if (PluginManager.getPluginsOnline().isEmpty()
-                && PluginManager.getPluginsLocal().isEmpty()
-//                && PREBUILT_REPOSITORIES.isNotEmpty()
-            ) {
-                navController.navigate(
-                    R.id.navigation_setup_extensions,
-                    SetupFragmentExtensions.newInstance(false)
-                )
             }
         } catch (e: Exception) {
             logError(e)

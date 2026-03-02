@@ -48,7 +48,7 @@ workRuntimeKtx = "2.11.1"
 zipline = "1.24.0"
 
 jvmTarget = "1.8"
-jdkToolchain = "17"
+jdkToolchain = "21"
 minSdk = "23"
 compileSdk = "36"
 targetSdk = "36"
