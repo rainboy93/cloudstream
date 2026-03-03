@@ -6,6 +6,7 @@ import com.lagradost.cloudstream3.HomePageList
 import com.lagradost.cloudstream3.HomePageResponse
 import com.lagradost.cloudstream3.LoadResponse
 import com.lagradost.cloudstream3.LoadResponse.Companion.addActors
+import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
 import com.lagradost.cloudstream3.MainAPI
 import com.lagradost.cloudstream3.MainPageRequest
 import com.lagradost.cloudstream3.SearchResponse
@@ -100,6 +101,7 @@ class OPhimProvider(val plugin: OPhimPlugin) : MainAPI() {
                         el.getMoviesList("${mainUrl}/v1/api/danh-sach/phim-le", 1)
                     addPoster(el.getImageUrl(movie.posterUrl, 1080))
                     addActors(movie.casts.map { cast -> Actor(cast, "") })
+                    addTrailer(movie.trailerUrl)
                 }
             }
 
@@ -122,8 +124,9 @@ class OPhimProvider(val plugin: OPhimPlugin) : MainAPI() {
                     this.tags = movie.categories.map { it.name }
                     this.recommendations =
                         el.getMoviesList("${mainUrl}/v1/api/danh-sach/phim-bo", 1)
-                    addPoster(el.getImageUrl(movie.posterUrl, 1080))
+                    addPoster(el.getImageUrl(movie.posterUrl))
                     addActors(movie.casts.map { cast -> Actor(cast, "") })
+                    addTrailer(movie.trailerUrl)
                 }
             }
         } catch (error: Exception) {
@@ -155,12 +158,16 @@ class OPhimProvider(val plugin: OPhimPlugin) : MainAPI() {
                 callback.invoke(
                     newExtractorLink(
                         source = episode.server,
-                        url = episode.linkM3u8,
+                        url = episode.linkM3u8.ifEmpty { episode.linkEmbed },
                         name = episode.server,
                         initializer = {
                             referer = mainUrl
                             quality = Qualities.Unknown.value
-                            type = ExtractorLinkType.M3U8
+                            type = if (episode.linkM3u8.isEmpty()) {
+                                ExtractorLinkType.VIDEO
+                            } else {
+                                ExtractorLinkType.M3U8
+                            }
                         }
                     )
                 )
@@ -197,6 +204,7 @@ class OPhimProvider(val plugin: OPhimPlugin) : MainAPI() {
         @JsonProperty("content") val content: String,
         @JsonProperty("thumb_url") val thumbUrl: String,
         @JsonProperty("poster_url") val posterUrl: String,
+        @JsonProperty("trailer_url") val trailerUrl: String,
         @JsonProperty("year") val publishYear: Int,
         @JsonProperty("actor") val casts: List<String>,
         @JsonProperty("category") val categories: List<MovieTaxonomyResponse>,
