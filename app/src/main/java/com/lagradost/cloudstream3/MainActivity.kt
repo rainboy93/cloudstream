@@ -90,8 +90,9 @@ import com.lagradost.cloudstream3.plugins.PluginManager
 import com.lagradost.cloudstream3.plugins.PluginManager.___DO_NOT_CALL_FROM_A_PLUGIN_loadAllOnlinePlugins
 import com.lagradost.cloudstream3.plugins.PluginManager.loadSinglePlugin
 import com.lagradost.cloudstream3.plugins.ophim.OPhimPlugin
-import com.lagradost.cloudstream3.plugins.phimmoichill.PhimMoiChillPlugin
+
 import com.lagradost.cloudstream3.plugins.phimp.PhimPPlugin
+import com.lagradost.cloudstream3.plugins.showbox.ShowBoxPlugin
 import com.lagradost.cloudstream3.receivers.VideoDownloadRestartReceiver
 import com.lagradost.cloudstream3.services.SubscriptionWorkManager
 import com.lagradost.cloudstream3.syncproviders.AccountManager
@@ -1340,11 +1341,11 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener, BiometricCa
             // Load built-in plugins
             OPhimPlugin().load(this)
             PhimPPlugin().load(this)
-            PhimMoiChillPlugin().load(this)
+            ShowBoxPlugin().load(this)
 
-            // Set PhimMoiChill as default homepage if none is selected
+            // Set PhimP as default homepage if none is selected
             if (DataStoreHelper.currentHomePage == null) {
-                DataStoreHelper.currentHomePage = "PhimMoiChill"
+                DataStoreHelper.currentHomePage = "PhimP"
             }
 
             ioSafe {
