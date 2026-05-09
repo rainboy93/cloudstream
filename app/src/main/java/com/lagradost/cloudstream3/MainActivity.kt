@@ -91,6 +91,7 @@ import com.lagradost.cloudstream3.plugins.PluginManager.___DO_NOT_CALL_FROM_A_PL
 import com.lagradost.cloudstream3.plugins.PluginManager.loadSinglePlugin
 import com.lagradost.cloudstream3.plugins.ophim.OPhimPlugin
 import com.lagradost.cloudstream3.plugins.phimmoichill.PhimMoiChillPlugin
+import com.lagradost.cloudstream3.plugins.phimp.PhimPPlugin
 import com.lagradost.cloudstream3.receivers.VideoDownloadRestartReceiver
 import com.lagradost.cloudstream3.services.SubscriptionWorkManager
 import com.lagradost.cloudstream3.syncproviders.AccountManager
@@ -1338,6 +1339,7 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener, BiometricCa
         } else if (lastError == null) {
             // Load built-in plugins
             OPhimPlugin().load(this)
+            PhimPPlugin().load(this)
             PhimMoiChillPlugin().load(this)
 
             // Set PhimMoiChill as default homepage if none is selected

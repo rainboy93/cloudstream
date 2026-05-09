@@ -46,7 +46,7 @@ class OPhimProvider(val plugin: OPhimPlugin) : MainAPI() {
     override val hasMainPage = true
     override val hasDownloadSupport = true
 
-    var mainUrlImage = "https://ophim17.cc/_next/image?url=https://img.ophim.live/uploads/movies"
+    var mainUrlImage = "https://img.ophim.live/uploads/movies"
 
     private suspend fun request(url: String): NiceResponse {
         return app.get(url)
@@ -99,7 +99,7 @@ class OPhimProvider(val plugin: OPhimPlugin) : MainAPI() {
                     this.tags = movie.categories.map { it.name }
                     this.recommendations =
                         el.getMoviesList("${mainUrl}/v1/api/danh-sach/phim-le", 1)
-                    addPoster(el.getImageUrl(movie.posterUrl, 1080))
+                    addPoster(el.getImageUrl(movie.posterUrl))
                     addActors(movie.casts.map { cast -> Actor(cast, "") })
                     addTrailer(movie.trailerUrl)
                 }
@@ -250,13 +250,9 @@ class OPhimProvider(val plugin: OPhimPlugin) : MainAPI() {
         val linkEmbed: String,
     )
 
-    private fun getImageUrl(url: String, width: Int = 256): String {
-        var newUrl = url
-        if (!url.contains("http")) {
-            newUrl = if (url.first() == '/')
-                "${mainUrlImage}${url}&w=$width&q=75" else "${mainUrlImage}/${url}&w=$width&q=75"
-        }
-        return newUrl
+    private fun getImageUrl(url: String): String {
+        if (url.contains("http")) return url
+        return if (url.startsWith("/")) "${mainUrlImage}${url}" else "${mainUrlImage}/${url}"
     }
 
     private suspend fun getMoviesList(
