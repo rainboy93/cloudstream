@@ -90,8 +90,8 @@ import com.lagradost.cloudstream3.plugins.PluginManager
 import com.lagradost.cloudstream3.plugins.PluginManager.___DO_NOT_CALL_FROM_A_PLUGIN_loadAllOnlinePlugins
 import com.lagradost.cloudstream3.plugins.PluginManager.loadSinglePlugin
 import com.lagradost.cloudstream3.plugins.kisskh.KissKHPlugin
+import com.lagradost.cloudstream3.plugins.onflix.OnflixPlugin
 import com.lagradost.cloudstream3.plugins.ophim.OPhimPlugin
-import com.lagradost.cloudstream3.plugins.phimp.PhimPPlugin
 import com.lagradost.cloudstream3.plugins.showbox.ShowBoxPlugin
 import com.lagradost.cloudstream3.receivers.VideoDownloadRestartReceiver
 import com.lagradost.cloudstream3.services.SubscriptionWorkManager
@@ -1340,13 +1340,12 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener, BiometricCa
         } else if (lastError == null) {
             // Load built-in plugins
             OPhimPlugin().load(this)
-            PhimPPlugin().load(this)
+            OnflixPlugin().load(this)
             ShowBoxPlugin().load(this)
             KissKHPlugin().load(this)
 
-            // Set PhimP as default homepage if none is selected
             if (DataStoreHelper.currentHomePage == null) {
-                DataStoreHelper.currentHomePage = "PhimP"
+                DataStoreHelper.currentHomePage = "Onflix"
             }
 
             ioSafe {
