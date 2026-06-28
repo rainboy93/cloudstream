@@ -48,3 +48,7 @@
 }
 -keep class com.fasterxml.jackson.** { *; }
 -dontwarn com.fasterxml.jackson.**
+
+# --- Cloud sync payload (serialized/deserialized reflectively) ---
+-keep class com.lagradost.cloudstream3.utils.BackupUtils$* { *; }
+-keep class com.lagradost.cloudstream3.cloudsync.** { *; }

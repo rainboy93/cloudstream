@@ -9,6 +9,16 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.dokka)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.google.services)
+}
+
+configurations.all {
+    resolutionStrategy {
+        // Firebase Firestore's protolite-well-known-types and protobuf-javalite 4.x both
+        // ship com.google.protobuf.* classes (duplicate class error). NewPipeExtractor
+        // forces 4.x; pin to the Firestore-aligned version to keep a single copy.
+        force("com.google.protobuf:protobuf-javalite:3.25.1")
+    }
 }
 
 val javaTarget = JvmTarget.fromTarget(libs.versions.jvmTarget.get())
@@ -68,7 +78,7 @@ android {
         applicationId = "com.lagradost.cloudstream3"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 71
+        versionCode = 73
         versionName = "9.9.9"
 
         resValue("string", "commit_hash", getGitCommitHash())
@@ -171,6 +181,11 @@ android {
 }
 
 dependencies {
+    // Firebase (cloud sync: auth + firestore)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
+
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.json)

@@ -4,9 +4,12 @@ import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.os.Bundle
 import android.os.CountDownTimer
+import android.text.InputType
 import android.view.View
 import android.view.View.FOCUS_DOWN
 import android.view.inputmethod.EditorInfo
+import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.annotation.UiThread
 import androidx.appcompat.app.AlertDialog
@@ -14,6 +17,7 @@ import androidx.core.content.edit
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.fragment.app.FragmentActivity
+import androidx.preference.Preference
 import androidx.preference.PreferenceManager
 import androidx.preference.SwitchPreference
 import androidx.recyclerview.widget.RecyclerView
@@ -22,14 +26,15 @@ import com.lagradost.cloudstream3.CommonActivity.onDialogDismissedEvent
 import com.lagradost.cloudstream3.CommonActivity.showToast
 import com.lagradost.cloudstream3.ErrorLoadingException
 import com.lagradost.cloudstream3.R
+import com.lagradost.cloudstream3.cloudsync.CloudSyncManager
 import com.lagradost.cloudstream3.databinding.AccountManagmentBinding
 import com.lagradost.cloudstream3.databinding.AccountSwitchBinding
 import com.lagradost.cloudstream3.databinding.AddAccountInputBinding
 import com.lagradost.cloudstream3.databinding.DeviceAuthBinding
 import com.lagradost.cloudstream3.mvvm.logError
 import com.lagradost.cloudstream3.syncproviders.AccountManager.Companion.aniListApi
-import com.lagradost.cloudstream3.syncproviders.AccountManager.Companion.malApi
 import com.lagradost.cloudstream3.syncproviders.AccountManager.Companion.kitsuApi
+import com.lagradost.cloudstream3.syncproviders.AccountManager.Companion.malApi
 import com.lagradost.cloudstream3.syncproviders.AccountManager.Companion.openSubtitlesApi
 import com.lagradost.cloudstream3.syncproviders.AccountManager.Companion.simklApi
 import com.lagradost.cloudstream3.syncproviders.AccountManager.Companion.subDlApi
@@ -40,8 +45,8 @@ import com.lagradost.cloudstream3.syncproviders.SubtitleRepo
 import com.lagradost.cloudstream3.syncproviders.SyncRepo
 import com.lagradost.cloudstream3.ui.BasePreferenceFragmentCompat
 import com.lagradost.cloudstream3.ui.settings.Globals.EMULATOR
-import com.lagradost.cloudstream3.ui.settings.Globals.TV
 import com.lagradost.cloudstream3.ui.settings.Globals.PHONE
+import com.lagradost.cloudstream3.ui.settings.Globals.TV
 import com.lagradost.cloudstream3.ui.settings.Globals.isLayout
 import com.lagradost.cloudstream3.ui.settings.SettingsFragment.Companion.getPref
 import com.lagradost.cloudstream3.ui.settings.SettingsFragment.Companion.hideOn
@@ -63,6 +68,7 @@ import com.lagradost.cloudstream3.utils.SingleSelectionHelper.showBottomDialogTe
 import com.lagradost.cloudstream3.utils.UIHelper.colorFromAttribute
 import com.lagradost.cloudstream3.utils.UIHelper.dismissSafe
 import com.lagradost.cloudstream3.utils.UIHelper.hideKeyboard
+import com.lagradost.cloudstream3.utils.UIHelper.toPx
 import com.lagradost.cloudstream3.utils.setText
 import com.lagradost.cloudstream3.utils.txt
 import qrcode.QRCode
@@ -486,5 +492,94 @@ class SettingsAccount : BasePreferenceFragmentCompat(), BiometricCallback {
                 }
             }
         }
+
+        findPreference<Preference>("cloud_sync_key")?.apply {
+            updateCloudSyncSummary(this)
+            setOnPreferenceClickListener {
+                val activity = activity ?: return@setOnPreferenceClickListener false
+                if (CloudSyncManager.isLoggedIn()) {
+                    showCloudSyncStatusDialog(activity, this)
+                } else {
+                    showCloudSyncLoginDialog(activity, this)
+                }
+                true
+            }
+        }
+    }
+
+    private fun updateCloudSyncSummary(pref: Preference) {
+        pref.summary = if (CloudSyncManager.isLoggedIn()) {
+            getString(R.string.cloud_sync_summary_logged_in, CloudSyncManager.currentEmail() ?: "")
+        } else {
+            getString(R.string.cloud_sync_summary_logged_out)
+        }
+    }
+
+    private fun showCloudSyncStatusDialog(activity: FragmentActivity, pref: Preference) {
+        AlertDialog.Builder(activity)
+            .setTitle(R.string.cloud_sync_title)
+            .setMessage(
+                getString(
+                    R.string.cloud_sync_summary_logged_in,
+                    CloudSyncManager.currentEmail() ?: ""
+                )
+            )
+            .setPositiveButton(R.string.sync_now) { _, _ ->
+                CloudSyncManager.syncNow()
+                showToast(R.string.sync_now)
+            }
+            .setNegativeButton(R.string.sign_out) { _, _ ->
+                CloudSyncManager.signOut()
+                updateCloudSyncSummary(pref)
+            }
+            .setNeutralButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun showCloudSyncLoginDialog(activity: FragmentActivity, pref: Preference) {
+        val padding = 16.toPx
+        val emailInput = EditText(activity).apply {
+            hint = getString(R.string.email_hint)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+        }
+        val passwordInput = EditText(activity).apply {
+            hint = getString(R.string.password_hint)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+        }
+        val layout = LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(padding, padding / 2, padding, 0)
+            addView(emailInput)
+            addView(passwordInput)
+        }
+
+        val onResult: (Result<Unit>) -> Unit = { result ->
+            result.onSuccess {
+                showToast(R.string.cloud_sync_title)
+                updateCloudSyncSummary(pref)
+            }.onFailure {
+                showToast(it.message ?: "Login failed")
+            }
+        }
+
+        AlertDialog.Builder(activity)
+            .setTitle(R.string.cloud_sync_title)
+            .setView(layout)
+            .setPositiveButton(R.string.sign_in) { _, _ ->
+                CloudSyncManager.signIn(
+                    emailInput.text.toString(),
+                    passwordInput.text.toString(),
+                    onResult
+                )
+            }
+            .setNeutralButton(R.string.sign_up) { _, _ ->
+                CloudSyncManager.signUp(
+                    emailInput.text.toString(),
+                    passwordInput.text.toString(),
+                    onResult
+                )
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 }

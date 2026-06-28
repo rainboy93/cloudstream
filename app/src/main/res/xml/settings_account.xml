@@ -37,6 +37,15 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory android:title="@string/cloud_sync_category">
+
+        <Preference
+            android:icon="@drawable/ic_outline_account_circle_24"
+            android:key="cloud_sync_key"
+            android:title="@string/cloud_sync_title" />
+
+    </PreferenceCategory>
+
     <PreferenceCategory
         android:title="@string/pref_category_security"
         app:key="@string/pref_category_security_key">
