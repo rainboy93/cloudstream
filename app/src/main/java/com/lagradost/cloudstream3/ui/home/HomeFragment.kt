@@ -35,6 +35,7 @@ import com.lagradost.cloudstream3.MainAPI
 import com.lagradost.cloudstream3.R
 import com.lagradost.cloudstream3.SearchResponse
 import com.lagradost.cloudstream3.TvType
+import com.lagradost.cloudstream3.cloudsync.CloudSyncManager
 import com.lagradost.cloudstream3.databinding.FragmentHomeBinding
 import com.lagradost.cloudstream3.databinding.HomeEpisodesExpandedBinding
 import com.lagradost.cloudstream3.databinding.HomeSelectMainpageBinding
@@ -740,6 +741,12 @@ class HomeFragment : BaseFragment<FragmentHomeBinding>(
                 homePreviewReloadProvider.isGone = (apiName == noneApi.name)
                 homePreviewSearchButton.isGone = (apiName == noneApi.name)
             }
+        }
+
+        // Refresh the continue-watching / bookmarks rows when a cloud sync pulls
+        // newer data in (it usually completes after the home has already rendered).
+        observe(CloudSyncManager.onRemoteApplied) {
+            homeViewModel.reloadStored()
         }
 
         observe(homeViewModel.page) { data ->

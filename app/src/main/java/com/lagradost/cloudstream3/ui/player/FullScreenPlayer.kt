@@ -35,6 +35,8 @@ import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.AlphaAnimation
 import android.view.animation.Animation
 import android.view.animation.AnimationUtils
+import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import androidx.annotation.OptIn
 import androidx.appcompat.app.AlertDialog
@@ -1936,6 +1938,77 @@ open class FullScreenPlayer : AbstractPlayerFragment() {
     }
 
     @SuppressLint("GestureBackNavigation")
+    private var tvSeekPreviewHideRunnable: Runnable? = null
+
+    /** Accumulated seek destination for the current D-pad seek session, null when idle. */
+    private var tvSeekTarget: Long? = null
+
+    /**
+     * Seek by [delta] ms and show a preview of the destination (TV D-pad seeking).
+     *
+     * We keep our own running target instead of re-reading the player position each
+     * press: during rapid presses the player position lags, which made the preview
+     * (and the relative seek) drift. We accumulate the target and seek to it absolutely
+     * so the preview always matches where we actually land.
+     */
+    private fun tvSeekWithPreview(delta: Long) {
+        val duration = player.getDuration()?.takeIf { it > 0L }
+        val base = tvSeekTarget ?: (player.getPosition() ?: 0L)
+        var target = base + delta
+        target = if (duration != null) target.coerceIn(0L, duration) else maxOf(0L, target)
+        tvSeekTarget = target
+        player.seekTo(target)
+        showTvSeekPreview(target)
+    }
+
+    /**
+     * On TV the seekbar is never scrubbed (D-pad does discrete seeks), so the normal
+     * preview overlay never triggers. This manually shows the preview frame for the
+     * destination position over the seekbar while seeking.
+     */
+    private fun showTvSeekPreview(targetPositionMs: Long) {
+        if (!isLayout(TV or EMULATOR)) return
+        val player = player
+        if (player !is CS3IPlayer || !player.hasPreview()) return
+        val duration = player.getDuration()?.takeIf { it > 0L } ?: return
+        val target = targetPositionMs.coerceIn(0L, duration)
+        val fraction = target.toFloat() / duration.toFloat()
+
+        val frame = playerView?.findViewById<FrameLayout>(R.id.previewFrameLayout) ?: return
+        val image = playerView?.findViewById<ImageView>(R.id.previewImageView) ?: return
+        val bar = playerView?.findViewById<View>(R.id.exo_progress) ?: return
+        val bottomBar = playerView?.findViewById<View>(R.id.bottom_player_bar)
+
+        val bitmap = player.getPreview(fraction) ?: return
+        image.setImageBitmap(bitmap)
+        image.isVisible = true
+
+        // Ensure the bar hosting the preview is visible during the seek.
+        bottomBar?.apply { alpha = 1f; translationY = 0f }
+        frame.isVisible = true
+        frame.bringToFront()
+
+        frame.post {
+            val barWidth = bar.width.toFloat()
+            if (barWidth > 0f) {
+                val centerX = bar.x + barWidth * fraction
+                frame.translationX = (centerX - frame.width / 2f) - frame.left
+            }
+        }
+
+        tvSeekPreviewHideRunnable?.let { frame.removeCallbacks(it) }
+        val hide = Runnable {
+            frame.isVisible = false
+            image.isVisible = false
+            // End the seek session so the next seek starts from the real position.
+            tvSeekTarget = null
+            // Restore the controls' hidden state if they weren't meant to be shown.
+            if (!isShowing) animateLayoutChanges()
+        }
+        tvSeekPreviewHideRunnable = hide
+        frame.postDelayed(hide, 1500)
+    }
+
     private fun handleKeyEvent(event: KeyEvent, hasNavigated: Boolean): Boolean {
         if (hasNavigated) {
             autoHide()
@@ -1968,20 +2041,20 @@ open class FullScreenPlayer : AbstractPlayerFragment() {
 
                 KeyEvent.KEYCODE_DPAD_LEFT -> {
                     if (!isShowing && !isLocked && !isShowingEpisodeOverlay) {
-                        player.seekTime(-androidTVInterfaceOffSeekTime)
+                        tvSeekWithPreview(-androidTVInterfaceOffSeekTime)
                         return true
                     } else if (playerBinding?.playerPausePlay?.isFocused == true) {
-                        player.seekTime(-androidTVInterfaceOnSeekTime)
+                        tvSeekWithPreview(-androidTVInterfaceOnSeekTime)
                         return true
                     }
                 }
 
                 KeyEvent.KEYCODE_DPAD_RIGHT -> {
                     if (!isShowing && !isLocked && !isShowingEpisodeOverlay) {
-                        player.seekTime(androidTVInterfaceOffSeekTime)
+                        tvSeekWithPreview(androidTVInterfaceOffSeekTime)
                         return true
                     } else if (playerBinding?.playerPausePlay?.isFocused == true) {
-                        player.seekTime(androidTVInterfaceOnSeekTime)
+                        tvSeekWithPreview(androidTVInterfaceOnSeekTime)
                         return true
                     }
                 }

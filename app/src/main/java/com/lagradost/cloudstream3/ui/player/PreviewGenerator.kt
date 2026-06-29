@@ -2,6 +2,7 @@ package com.lagradost.cloudstream3.ui.player
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.media.MediaDataSource
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
@@ -11,9 +12,8 @@ import androidx.core.graphics.scale
 import androidx.preference.PreferenceManager
 import com.lagradost.cloudstream3.CloudStreamApp
 import com.lagradost.cloudstream3.R
+import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.mvvm.logError
-import com.lagradost.cloudstream3.ui.settings.Globals.TV
-import com.lagradost.cloudstream3.ui.settings.Globals.isLayout
 import com.lagradost.cloudstream3.utils.Coroutines.ioSafe
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
@@ -70,8 +70,7 @@ interface IPreviewGenerator {
                     ctx.getString(R.string.preview_seekbar_key), true
                 ) == false
             } ?: false
-            /** because TV has low ram + not show we disable this for now */
-            return if (isLayout(TV) || userDisabled) {
+            return if (userDisabled) {
                 empty()
             } else {
                 PreviewGenerator()
@@ -263,7 +262,10 @@ private class M3u8PreviewGenerator(override var params: ImageParams) : IPreviewG
     private var totalImages: Int = 0
 
     override fun hasPreview(): Boolean {
-        return totalImages > 0 && loadedImages >= minOf(totalImages, 4)
+        // Show the preview as soon as the first frame is ready instead of waiting for
+        // ~4. Network HLS (e.g. redirecting CDN segments) can be slow to decode, and
+        // requiring several frames meant the preview often never appeared while scrubbing.
+        return totalImages > 0 && loadedImages >= 1
     }
 
     override fun getPreviewImage(fraction: Float): Bitmap? {
@@ -381,7 +383,19 @@ private class M3u8PreviewGenerator(override var params: ImageParams) : IPreviewG
 
                         val ts = hsl.allTsLinks[index]
                         try {
-                            retriever.setDataSource(ts.url, hsl.headers)
+                            // Fetch the segment ourselves so redirects (e.g. CDN 302) and
+                            // headers are handled by our HTTP client. Some Android TV
+                            // devices' MediaMetadataRetriever does not follow redirects,
+                            // which would silently yield no frames. Fall back to the URL
+                            // data source if the byte fetch fails.
+                            try {
+                                val bytes = app.get(ts.url, headers = hsl.headers, verify = false)
+                                    .body.bytes()
+                                retriever.setDataSource(ByteArrayMediaDataSource(bytes))
+                            } catch (t: Throwable) {
+                                logError(t)
+                                retriever.setDataSource(ts.url, hsl.headers)
+                            }
                             if (!isActive) {
                                 return@withContext
                             }
@@ -543,4 +557,19 @@ private class Mp4PreviewGenerator(override var params: ImageParams) : IPreviewGe
             }
         }
     }
+}
+
+/** In-memory [MediaDataSource] so MediaMetadataRetriever decodes already-downloaded bytes. */
+private class ByteArrayMediaDataSource(private val data: ByteArray) : MediaDataSource() {
+    override fun readAt(position: Long, buffer: ByteArray, offset: Int, size: Int): Int {
+        if (position >= data.size) return -1
+        val end = minOf(position + size, data.size.toLong()).toInt()
+        val count = end - position.toInt()
+        if (count <= 0) return -1
+        System.arraycopy(data, position.toInt(), buffer, offset, count)
+        return count
+    }
+
+    override fun getSize(): Long = data.size.toLong()
+    override fun close() {}
 }
