@@ -6,6 +6,7 @@ import android.content.Context
 import android.os.Bundle
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import com.fasterxml.jackson.core.type.TypeReference
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
@@ -16,6 +17,8 @@ import com.lagradost.cloudstream3.utils.Coroutines.ioSafe
 import com.lagradost.cloudstream3.utils.Coroutines.main
 import com.lagradost.cloudstream3.utils.DataStore
 import com.lagradost.cloudstream3.utils.DataStore.getDefaultSharedPrefs
+import com.lagradost.cloudstream3.utils.DataStore.getSyncMtimes
+import com.lagradost.cloudstream3.utils.DataStore.putSyncMtimes
 import java.util.UUID
 
 /**
@@ -31,9 +34,10 @@ import java.util.UUID
  *  - **Push** (upload) when the app goes to the background, and when leaving the
  *    player screen (via [syncNow]).
  *
- * Conflict resolution: union of keys, remote-wins on overlap (document-level
- * last-writer-wins). Distinct items never clobber each other; the same item
- * edited concurrently resolves to the most recently written document.
+ * Conflict resolution: union of keys with per-key last-writer-wins. Every synced
+ * data key carries a local modified-time (see [DataStore.getSyncMtimes]); on merge
+ * the newer write of an overlapping key wins. Keys without a known timestamp on
+ * either side fall back to remote-wins. Distinct items never clobber each other.
  */
 object CloudSyncManager {
     private const val DEVICE_ID_KEY = "cloud_sync_device_id"
@@ -42,6 +46,9 @@ object CloudSyncManager {
     private const val FIELD_DEVICE = "deviceId"
     private const val FIELD_VERSION = "version"
     private const val FIELD_UPDATED_AT = "updatedAt"
+
+    /** JSON string of `key -> lastModifiedMs` for per-key last-writer-wins. */
+    private const val FIELD_TIMESTAMPS = "timestamps"
 
     sealed class SyncStatus {
         data object LoggedOut : SyncStatus()
@@ -171,7 +178,8 @@ object CloudSyncManager {
                     val device = snapshot.getString(FIELD_DEVICE)
                     // Skip re-applying our own latest upload.
                     if (!(device == deviceId && version == lastUploadedVersion)) {
-                        ioSafe { applyRemote(payload) }
+                        val remoteTimestamps = parseTimestamps(snapshot.getString(FIELD_TIMESTAMPS))
+                        ioSafe { applyRemote(payload, remoteTimestamps) }
                     } else {
                         _status.postValue(SyncStatus.Synced(System.currentTimeMillis()))
                     }
@@ -193,12 +201,18 @@ object CloudSyncManager {
             }
     }
 
-    private fun applyRemote(payload: String) {
+    private fun applyRemote(payload: String, remoteTimestamps: Map<String, Long>) {
         val context = appContext ?: return
         try {
             val remote = DataStore.mapper.readValue(payload, BackupUtils.BackupFile::class.java)
             val local = BackupUtils.getBackup(context)
-            val merged = if (local == null) remote else mergeFile(local, remote)
+            val localTimestamps = context.getSyncMtimes()
+
+            val (merged, mergedTimestamps) = if (local == null) {
+                remote to remoteTimestamps
+            } else {
+                mergeFile(local, localTimestamps, remote, remoteTimestamps)
+            }
 
             BackupUtils.restore(
                 context,
@@ -206,6 +220,10 @@ object CloudSyncManager {
                 restoreSettings = true,
                 restoreDataStore = true
             )
+
+            // Restore uses raw writes that bypass mtime stamping, so record the winning
+            // timestamps explicitly. Later uploads then carry accurate recency to peers.
+            context.putSyncMtimes(mergedTimestamps)
 
             val now = System.currentTimeMillis()
             _status.postValue(SyncStatus.Synced(now))
@@ -216,6 +234,16 @@ object CloudSyncManager {
         }
     }
 
+    private fun parseTimestamps(json: String?): Map<String, Long> {
+        if (json.isNullOrEmpty()) return emptyMap()
+        return try {
+            DataStore.mapper.readValue(json, object : TypeReference<Map<String, Long>>() {})
+        } catch (e: Exception) {
+            logError(e)
+            emptyMap()
+        }
+    }
+
     private fun uploadLocal() {
         val context = appContext ?: return
         val uid = auth.currentUser?.uid ?: return
@@ -223,12 +251,14 @@ object CloudSyncManager {
         try {
             val file = BackupUtils.getBackup(context) ?: return
             val json = DataStore.mapper.writeValueAsString(file)
+            val timestampsJson = DataStore.mapper.writeValueAsString(context.getSyncMtimes())
             val version = System.currentTimeMillis()
             val document = mapOf(
                 FIELD_DEVICE to deviceId,
                 FIELD_VERSION to version,
                 FIELD_UPDATED_AT to FieldValue.serverTimestamp(),
                 FIELD_PAYLOAD to json,
+                FIELD_TIMESTAMPS to timestampsJson,
             )
             _status.postValue(SyncStatus.Syncing)
             firestore.collection(USERS_COLLECTION).document(uid).set(document)
@@ -245,25 +275,39 @@ object CloudSyncManager {
         }
     }
 
-    /** Union of keys; remote wins on overlap. */
+    /**
+     * Union of keys with per-key last-writer-wins. On an overlapping key the side with
+     * the newer timestamp wins; ties and keys unknown to both sides fall back to
+     * remote-wins. Returns the merged file plus the merged per-key timestamps.
+     */
     private fun mergeFile(
         local: BackupUtils.BackupFile,
+        localTs: Map<String, Long>,
         remote: BackupUtils.BackupFile,
-    ): BackupUtils.BackupFile {
-        return BackupUtils.BackupFile(
-            datastore = mergeVars(local.datastore, remote.datastore),
-            settings = mergeVars(local.settings, remote.settings),
+        remoteTs: Map<String, Long>,
+    ): Pair<BackupUtils.BackupFile, Map<String, Long>> {
+        val merged = BackupUtils.BackupFile(
+            datastore = mergeVars(local.datastore, remote.datastore, localTs, remoteTs),
+            settings = mergeVars(local.settings, remote.settings, localTs, remoteTs),
         )
+        return merged to computeMergedTimestamps(merged, localTs, remoteTs)
     }
 
     private fun mergeVars(
         local: BackupUtils.BackupVars,
         remote: BackupUtils.BackupVars,
+        localTs: Map<String, Long>,
+        remoteTs: Map<String, Long>,
     ): BackupUtils.BackupVars {
         fun <V> merge(a: Map<String, V>?, b: Map<String, V>?): Map<String, V>? {
             if (a == null) return b
             if (b == null) return a
-            return a + b // b (remote) overrides on conflict
+            val out = LinkedHashMap(a)
+            for ((key, value) in b) {
+                val remoteWins = (remoteTs[key] ?: 0L) >= (localTs[key] ?: 0L)
+                if (!out.containsKey(key) || remoteWins) out[key] = value
+            }
+            return out
         }
         return BackupUtils.BackupVars(
             bool = merge(local.bool, remote.bool),
@@ -273,5 +317,31 @@ object CloudSyncManager {
             long = merge(local.long, remote.long),
             stringSet = merge(local.stringSet, remote.stringSet),
         )
+    }
+
+    /** For every key that survived the merge, keep the newer of the two timestamps. */
+    private fun computeMergedTimestamps(
+        merged: BackupUtils.BackupFile,
+        localTs: Map<String, Long>,
+        remoteTs: Map<String, Long>,
+    ): Map<String, Long> {
+        val keys = HashSet<String>()
+        fun collect(vars: BackupUtils.BackupVars) {
+            vars.bool?.keys?.let { keys += it }
+            vars.int?.keys?.let { keys += it }
+            vars.string?.keys?.let { keys += it }
+            vars.float?.keys?.let { keys += it }
+            vars.long?.keys?.let { keys += it }
+            vars.stringSet?.keys?.let { keys += it }
+        }
+        collect(merged.datastore)
+        collect(merged.settings)
+
+        val out = HashMap<String, Long>(keys.size)
+        for (key in keys) {
+            val time = maxOf(localTs[key] ?: 0L, remoteTs[key] ?: 0L)
+            if (time > 0L) out[key] = time
+        }
+        return out
     }
 }

@@ -91,8 +91,8 @@ import com.lagradost.cloudstream3.plugins.PluginManager
 import com.lagradost.cloudstream3.plugins.PluginManager.___DO_NOT_CALL_FROM_A_PLUGIN_loadAllOnlinePlugins
 import com.lagradost.cloudstream3.plugins.PluginManager.loadSinglePlugin
 import com.lagradost.cloudstream3.plugins.kisskh.KissKHPlugin
-import com.lagradost.cloudstream3.plugins.motchill.MotChillPlugin
 import com.lagradost.cloudstream3.plugins.ophim.OPhimPlugin
+import com.lagradost.cloudstream3.plugins.rophim.RoPhimPlugin
 import com.lagradost.cloudstream3.receivers.VideoDownloadRestartReceiver
 import com.lagradost.cloudstream3.services.SubscriptionWorkManager
 import com.lagradost.cloudstream3.syncproviders.AccountManager
@@ -128,7 +128,6 @@ import com.lagradost.cloudstream3.ui.settings.Globals.isLayout
 import com.lagradost.cloudstream3.ui.settings.Globals.updateTv
 import com.lagradost.cloudstream3.ui.settings.SettingsGeneral
 import com.lagradost.cloudstream3.ui.setup.HAS_DONE_SETUP_KEY
-import com.lagradost.cloudstream3.utils.ApkInstaller
 import com.lagradost.cloudstream3.utils.AppContextUtils.getApiDubstatusSettings
 import com.lagradost.cloudstream3.utils.AppContextUtils.html
 import com.lagradost.cloudstream3.utils.AppContextUtils.isCastApiAvailable
@@ -160,7 +159,6 @@ import com.lagradost.cloudstream3.utils.DataStoreHelper.accounts
 import com.lagradost.cloudstream3.utils.DataStoreHelper.migrateResumeWatching
 import com.lagradost.cloudstream3.utils.Event
 import com.lagradost.cloudstream3.utils.ImageLoader.loadImage
-import com.lagradost.cloudstream3.utils.InAppUpdater.runAutoUpdate
 import com.lagradost.cloudstream3.utils.SingleSelectionHelper.showBottomDialog
 import com.lagradost.cloudstream3.utils.SnackbarHelper.showSnackbar
 import com.lagradost.cloudstream3.utils.TvChannelUtils
@@ -647,10 +645,6 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener, BiometricCa
     override fun onPause() {
         super.onPause()
 
-        // Start any delayed updates
-        if (ApkInstaller.delayedInstaller?.startInstallation() == true) {
-            Toast.makeText(this, R.string.update_started, Toast.LENGTH_LONG).show()
-        }
         try {
             if (isCastApiAvailable()) {
                 mSessionManager?.removeSessionManagerListener(mSessionManagerListener)
@@ -1342,7 +1336,7 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener, BiometricCa
         } else if (lastError == null) {
             // Load built-in plugins
             OPhimPlugin().load(this)
-            MotChillPlugin().load(this)
+            RoPhimPlugin().load(this)
             KissKHPlugin().load(this)
 
             if (DataStoreHelper.currentHomePage == null) {
@@ -1980,10 +1974,6 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener, BiometricCa
         }
 
         handleAppIntent(intent)
-
-        ioSafe {
-            runAutoUpdate()
-        }
 
         FcastManager().init(this, false)
 

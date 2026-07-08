@@ -232,11 +232,6 @@
             android:name=".ui.ControllerActivity"
             android:exported="false" />
 
-        <service
-            android:name=".services.PackageInstallerService"
-            android:foregroundServiceType="dataSync"
-            android:exported="false" />
-
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"

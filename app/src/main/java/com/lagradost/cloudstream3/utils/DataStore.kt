@@ -2,6 +2,7 @@ package com.lagradost.cloudstream3.utils
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import androidx.preference.PreferenceManager
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.json.JsonMapper
@@ -12,7 +13,6 @@ import com.lagradost.cloudstream3.CloudStreamApp.Companion.setKeyClass
 import com.lagradost.cloudstream3.mvvm.logError
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
-import androidx.core.content.edit
 
 /** Used to display metadata about downloads and resume watching */
 const val DOWNLOAD_HEADER_CACHE = "download_header_cache"
@@ -25,6 +25,13 @@ const val VIDEO_PLAYER_BRIGHTNESS = "video_player_alpha_key"
 const val USER_SELECTED_HOMEPAGE_API = "home_api_used"
 const val USER_PROVIDER_API = "user_custom_sites"
 const val PREFERENCES_NAME = "rebuild_preference"
+
+/**
+ * Sidecar store mapping each data key to the epoch-ms it was last modified locally.
+ * Kept in its own prefs file so it is never itself backed up or synced, and used by
+ * cloud sync to resolve conflicts with per-key last-writer-wins.
+ */
+const val SYNC_MTIME_PREFERENCES_NAME = "cloudsync_mtime"
 
 // TODO degelgate by value for get & set
 
@@ -134,6 +141,66 @@ object DataStore {
         return prefs.contains(path)
     }
 
+    private fun Context.getSyncMtimePrefs(): SharedPreferences {
+        return getSharedPreferences(SYNC_MTIME_PREFERENCES_NAME, Context.MODE_PRIVATE)
+    }
+
+    /** Stamp [path] as modified now, so cloud sync can tell which copy is newer. */
+    fun Context.recordSyncMtime(path: String, time: Long = System.currentTimeMillis()) {
+        try {
+            getSyncMtimePrefs().edit { putLong(path, time) }
+        } catch (e: Exception) {
+            logError(e)
+        }
+    }
+
+    fun Context.recordSyncMtimes(
+        paths: Collection<String>,
+        time: Long = System.currentTimeMillis(),
+    ) {
+        if (paths.isEmpty()) return
+        try {
+            getSyncMtimePrefs().edit {
+                paths.forEach { putLong(it, time) }
+            }
+        } catch (e: Exception) {
+            logError(e)
+        }
+    }
+
+    private fun Context.removeSyncMtimes(paths: Collection<String>) {
+        if (paths.isEmpty()) return
+        try {
+            getSyncMtimePrefs().edit {
+                paths.forEach { remove(it) }
+            }
+        } catch (e: Exception) {
+            logError(e)
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun Context.getSyncMtimes(): Map<String, Long> {
+        return try {
+            getSyncMtimePrefs().all.filterValues { it is Long } as Map<String, Long>
+        } catch (e: Exception) {
+            logError(e)
+            emptyMap()
+        }
+    }
+
+    /** Upsert (never clears) so concurrent local writes are not lost. */
+    fun Context.putSyncMtimes(times: Map<String, Long>) {
+        if (times.isEmpty()) return
+        try {
+            getSyncMtimePrefs().edit {
+                times.forEach { (key, value) -> putLong(key, value) }
+            }
+        } catch (e: Exception) {
+            logError(e)
+        }
+    }
+
     fun Context.removeKey(path: String) {
         try {
             val prefs = getSharedPrefs()
@@ -142,6 +209,7 @@ object DataStore {
                     remove(path)
                 }
             }
+            removeSyncMtimes(listOf(path))
         } catch (e: Exception) {
             logError(e)
         }
@@ -155,6 +223,7 @@ object DataStore {
                     remove(value)
                 }
             }
+            removeSyncMtimes(keys)
             return keys.size
         } catch (e: Exception) {
             logError(e)
@@ -167,6 +236,7 @@ object DataStore {
             getSharedPrefs().edit {
                 putString(path, mapper.writeValueAsString(value))
             }
+            recordSyncMtime(path)
         } catch (e: Exception) {
             logError(e)
         }

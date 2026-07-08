@@ -137,6 +137,9 @@ class GeneratorPlayer : FullScreenPlayer() {
         const val CHANNEL_ID = 7340
         const val STOP_ACTION = "stopcs3"
 
+        /** How often to push watch progress to the cloud while actively watching. */
+        private const val CLOUD_SYNC_POSITION_INTERVAL_MS = 10_000L
+
         private var lastUsedGenerator: IGenerator? = null
         fun newInstance(generator: IGenerator, syncData: HashMap<String, String>? = null): Bundle {
             Log.i(TAG, "newInstance = $syncData")
@@ -1598,6 +1601,7 @@ class GeneratorPlayer : FullScreenPlayer() {
 
     var maxEpisodeSet: Int? = null
     var hasRequestedStamps: Boolean = false
+    private var lastCloudSyncMs: Long = 0L
     override fun playerPositionChanged(position: Long, duration: Long) {
         // Don't save livestream data
         if ((currentMeta as? ResultEpisode)?.tvType?.isLiveStream() == true) return
@@ -1628,6 +1632,13 @@ class GeneratorPlayer : FullScreenPlayer() {
             currentMeta,
             nextMeta
         )
+
+        // Push watch progress to the cloud periodically while watching (no-op when signed out).
+        val nowMs = System.currentTimeMillis()
+        if (nowMs - lastCloudSyncMs >= CLOUD_SYNC_POSITION_INTERVAL_MS) {
+            lastCloudSyncMs = nowMs
+            ioSafe { CloudSyncManager.syncNow() }
+        }
 
         var isOpVisible = false
         when (val meta = currentMeta) {

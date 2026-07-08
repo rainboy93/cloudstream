@@ -1,4 +1,4 @@
-package com.lagradost.cloudstream3.plugins.motchill
+package com.lagradost.cloudstream3.plugins.rophim
 
 import android.content.Context
 import androidx.appcompat.app.AppCompatActivity
@@ -6,12 +6,12 @@ import com.lagradost.cloudstream3.plugins.CloudstreamPlugin
 import com.lagradost.cloudstream3.plugins.Plugin
 
 @CloudstreamPlugin
-class MotChillPlugin : Plugin() {
+class RoPhimPlugin : Plugin() {
     var activity: AppCompatActivity? = null
 
     override fun load(context: Context) {
         activity = context as AppCompatActivity
         // All providers should be added in this manner
-        registerMainAPI(MotChillProvider(this))
+        registerMainAPI(RoPhimProvider(this))
     }
 }

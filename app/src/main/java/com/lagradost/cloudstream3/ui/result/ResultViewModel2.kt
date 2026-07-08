@@ -1,7 +1,8 @@
 package com.lagradost.cloudstream3.ui.result
 
 import android.app.Activity
-import android.content.*
+import android.content.Context
+import android.content.DialogInterface
 import android.util.Log
 import android.widget.Toast
 import androidx.annotation.MainThread
@@ -10,24 +11,50 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.lagradost.cloudstream3.*
-import com.lagradost.cloudstream3.actions.AlwaysAskAction
-import com.lagradost.cloudstream3.actions.VideoClickActionHolder
+import com.lagradost.cloudstream3.APIHolder
 import com.lagradost.cloudstream3.APIHolder.apis
 import com.lagradost.cloudstream3.APIHolder.getApiFromNameNull
 import com.lagradost.cloudstream3.APIHolder.unixTime
 import com.lagradost.cloudstream3.APIHolder.unixTimeMS
+import com.lagradost.cloudstream3.ActorData
+import com.lagradost.cloudstream3.AnimeLoadResponse
 import com.lagradost.cloudstream3.CloudStreamApp.Companion.context
 import com.lagradost.cloudstream3.CloudStreamApp.Companion.setKey
 import com.lagradost.cloudstream3.CommonActivity.activity
 import com.lagradost.cloudstream3.CommonActivity.getCastSession
 import com.lagradost.cloudstream3.CommonActivity.showToast
+import com.lagradost.cloudstream3.DubStatus
+import com.lagradost.cloudstream3.EpisodeResponse
+import com.lagradost.cloudstream3.IDownloadableMinimum
+import com.lagradost.cloudstream3.LiveStreamLoadResponse
+import com.lagradost.cloudstream3.LoadResponse
 import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
 import com.lagradost.cloudstream3.LoadResponse.Companion.getAniListId
 import com.lagradost.cloudstream3.LoadResponse.Companion.getKitsuId
 import com.lagradost.cloudstream3.LoadResponse.Companion.getMalId
 import com.lagradost.cloudstream3.LoadResponse.Companion.isMovie
 import com.lagradost.cloudstream3.LoadResponse.Companion.readIdFromString
+import com.lagradost.cloudstream3.MainActivity
+import com.lagradost.cloudstream3.MovieLoadResponse
+import com.lagradost.cloudstream3.ProviderType
+import com.lagradost.cloudstream3.R
+import com.lagradost.cloudstream3.Score
+import com.lagradost.cloudstream3.SearchResponse
+import com.lagradost.cloudstream3.SeasonData
+import com.lagradost.cloudstream3.ShowStatus
+import com.lagradost.cloudstream3.SimklSyncServices
+import com.lagradost.cloudstream3.SubtitleFile
+import com.lagradost.cloudstream3.TorrentLoadResponse
+import com.lagradost.cloudstream3.TrackerType
+import com.lagradost.cloudstream3.TrailerData
+import com.lagradost.cloudstream3.TvSeriesLoadResponse
+import com.lagradost.cloudstream3.TvType
+import com.lagradost.cloudstream3.VPNStatus
+import com.lagradost.cloudstream3.actions.AlwaysAskAction
+import com.lagradost.cloudstream3.actions.VideoClickActionHolder
+import com.lagradost.cloudstream3.amap
+import com.lagradost.cloudstream3.isEpisodeBased
+import com.lagradost.cloudstream3.isLiveStream
 import com.lagradost.cloudstream3.metaproviders.SyncRedirector
 import com.lagradost.cloudstream3.mvvm.Resource
 import com.lagradost.cloudstream3.mvvm.debugAssert
@@ -44,7 +71,6 @@ import com.lagradost.cloudstream3.syncproviders.SyncAPI
 import com.lagradost.cloudstream3.syncproviders.providers.Kitsu
 import com.lagradost.cloudstream3.ui.APIRepository
 import com.lagradost.cloudstream3.ui.WatchType
-import com.lagradost.cloudstream3.utils.downloader.DownloadQueueManager
 import com.lagradost.cloudstream3.ui.player.GeneratorPlayer
 import com.lagradost.cloudstream3.ui.player.IGenerator
 import com.lagradost.cloudstream3.ui.player.LOADTYPE_ALL
@@ -67,6 +93,7 @@ import com.lagradost.cloudstream3.utils.DOWNLOAD_HEADER_CACHE
 import com.lagradost.cloudstream3.utils.DataStore
 import com.lagradost.cloudstream3.utils.DataStore.editor
 import com.lagradost.cloudstream3.utils.DataStore.getFolderName
+import com.lagradost.cloudstream3.utils.DataStore.recordSyncMtimes
 import com.lagradost.cloudstream3.utils.DataStore.setKey
 import com.lagradost.cloudstream3.utils.DataStoreHelper
 import com.lagradost.cloudstream3.utils.DataStoreHelper.currentAccount
@@ -105,8 +132,8 @@ import com.lagradost.cloudstream3.utils.UIHelper.navigate
 import com.lagradost.cloudstream3.utils.UiText
 import com.lagradost.cloudstream3.utils.VIDEO_WATCH_STATE
 import com.lagradost.cloudstream3.utils.downloader.DownloadFileManagement.sanitizeFilename
-import com.lagradost.cloudstream3.utils.downloader.VideoDownloadManager.getDownloadEpisodeMetadata
 import com.lagradost.cloudstream3.utils.downloader.DownloadObjects
+import com.lagradost.cloudstream3.utils.downloader.DownloadQueueManager
 import com.lagradost.cloudstream3.utils.downloader.DownloadUtils.downloadSubtitle
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.newExtractorLink
@@ -1295,17 +1322,18 @@ class ResultViewModel2 : ViewModel() {
     private fun markEpisodes(
         editor: Editor,
         episodeIds: Array<String>,
-        watchState: VideoWatchState
-    ) {
+        watchState: VideoWatchState,
+    ): List<String> {
         val watchStateString = DataStore.mapper.writeValueAsString(watchState)
+        val changedKeys = ArrayList<String>()
         episodeIds.forEach {
             if (getVideoWatchState(it.toInt()) != watchState) {
-                editor.setKeyRaw(
-                    getFolderName("$currentAccount/$VIDEO_WATCH_STATE", it),
-                    watchStateString
-                )
+                val key = getFolderName("$currentAccount/$VIDEO_WATCH_STATE", it)
+                editor.setKeyRaw(key, watchStateString)
+                changedKeys.add(key)
             }
         }
+        return changedKeys
     }
 
     private fun getEpisodesIdsBySeason(season: Int): HashMap<Int, Array<String>> {
@@ -1565,13 +1593,15 @@ class ResultViewModel2 : ViewModel() {
                         if (getVideoWatchState(click.data.id) == VideoWatchState.Watched) VideoWatchState.None else VideoWatchState.Watched
                     val seasons = getEpisodesIdsBySeason(clickSeason)
 
+                    val changedKeys = ArrayList<String>()
                     seasons.keys.forEach { currentSeason ->
                         var episodeIds = seasons[currentSeason] ?: emptyArray()
                         if (currentSeason == clickSeason) episodeIds =
                             episodeIds.sliceArray(0 until clickEpisode)
-                        markEpisodes(editor, episodeIds, watchState)
+                        changedKeys += markEpisodes(editor, episodeIds, watchState)
                     }
                     editor.apply()
+                    context?.recordSyncMtimes(changedKeys)
                     reloadEpisodes()
                 }
             }
