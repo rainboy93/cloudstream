@@ -173,23 +173,29 @@ object CloudSyncManager {
                     snapshot.getString(FIELD_PAYLOAD)
                 } else null
 
+                // Whether to push the merged union back after reconciling (set on sign-in).
+                val uploadAfter = needsInitialUpload
+                needsInitialUpload = false
+
                 if (payload != null) {
                     val version = snapshot!!.getLong(FIELD_VERSION) ?: 0L
                     val device = snapshot.getString(FIELD_DEVICE)
                     // Skip re-applying our own latest upload.
                     if (!(device == deviceId && version == lastUploadedVersion)) {
                         val remoteTimestamps = parseTimestamps(snapshot.getString(FIELD_TIMESTAMPS))
-                        ioSafe { applyRemote(payload, remoteTimestamps) }
+                        // Upload only after the merge+restore finishes, so we push the merged
+                        // union rather than clobbering the cloud with pre-merge local data.
+                        ioSafe {
+                            applyRemote(payload, remoteTimestamps)
+                            if (uploadAfter) uploadLocal()
+                        }
                     } else {
                         _status.postValue(SyncStatus.Synced(System.currentTimeMillis()))
+                        if (uploadAfter) uploadLocal()
                     }
                 } else {
                     _status.postValue(SyncStatus.Synced(System.currentTimeMillis()))
-                }
-
-                if (needsInitialUpload) {
-                    needsInitialUpload = false
-                    uploadLocal()
+                    if (uploadAfter) uploadLocal()
                 }
             }
             .addOnFailureListener {
