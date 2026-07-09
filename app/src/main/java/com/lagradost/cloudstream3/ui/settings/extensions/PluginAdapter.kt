@@ -8,7 +8,6 @@ import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
-import androidx.recyclerview.widget.RecyclerView
 import androidx.viewbinding.ViewBinding
 import com.lagradost.cloudstream3.CloudStreamApp.Companion.getActivity
 import com.lagradost.cloudstream3.PROVIDER_STATUS_DOWN
@@ -16,15 +15,14 @@ import com.lagradost.cloudstream3.R
 import com.lagradost.cloudstream3.TvType
 import com.lagradost.cloudstream3.databinding.RepositoryItemBinding
 import com.lagradost.cloudstream3.plugins.PluginManager
-import com.lagradost.cloudstream3.plugins.VotingApi.getVotes
+import com.lagradost.cloudstream3.plugins.PluginWrapper
 import com.lagradost.cloudstream3.ui.BaseDiffCallback
 import com.lagradost.cloudstream3.ui.NoStateAdapter
 import com.lagradost.cloudstream3.ui.ViewHolderState
+import com.lagradost.cloudstream3.ui.newSharedPool
 import com.lagradost.cloudstream3.ui.settings.Globals.TV
 import com.lagradost.cloudstream3.ui.settings.Globals.isLayout
 import com.lagradost.cloudstream3.utils.AppContextUtils.html
-import com.lagradost.cloudstream3.utils.Coroutines.ioSafe
-import com.lagradost.cloudstream3.utils.Coroutines.main
 import com.lagradost.cloudstream3.utils.ImageLoader.loadImage
 import com.lagradost.cloudstream3.utils.SubtitleHelper.getNameNextToFlagEmoji
 import com.lagradost.cloudstream3.utils.UIHelper.toPx
@@ -37,7 +35,7 @@ import kotlin.math.log10
 import kotlin.math.pow
 
 data class PluginViewData(
-    val plugin: Plugin,
+    val pluginWrapper: PluginWrapper,
     val isDownloaded: Boolean,
 )
 
@@ -47,9 +45,9 @@ class RepositoryViewHolderState(view: ViewBinding) : ViewHolderState<Any>(view) 
 }
 
 class PluginAdapter(
-    val iconClickCallback: (Plugin) -> Unit
+    val showRepositoryNames: Boolean = false, val iconClickCallback: (PluginWrapper) -> Unit,
 ) : NoStateAdapter<PluginViewData>(diffCallback = BaseDiffCallback(itemSame = { a, b ->
-    a.plugin.second.internalName == b.plugin.second.internalName && a.plugin.first == b.plugin.first
+    a.pluginWrapper.plugin.internalName == b.pluginWrapper.plugin.internalName && a.pluginWrapper.repositoryData.url == b.pluginWrapper.repositoryData.url
 })) {
     override fun onCreateContent(parent: ViewGroup): ViewHolderState<Any> {
         val layout = if (isLayout(TV)) R.layout.repository_item_tv else R.layout.repository_item
@@ -76,13 +74,21 @@ class PluginAdapter(
         val binding = holder.view as? RepositoryItemBinding ?: return
         val itemView = holder.itemView
 
-        val metadata = item.plugin.second
+        val metadata = item.pluginWrapper.plugin
         val disabled = metadata.status == PROVIDER_STATUS_DOWN
         val name = metadata.name.removeSuffix("Provider")
         val alpha = if (disabled) 0.6f else 1f
-        val isLocal = !item.plugin.second.url.startsWith("http")
+        val isLocal = !item.pluginWrapper.plugin.url.startsWith("http")
         binding.mainText.alpha = alpha
         binding.subText.alpha = alpha
+
+        binding.repositoryNameText.isVisible = showRepositoryNames
+        if (showRepositoryNames) {
+            val name = item.pluginWrapper.repositoryData.name
+            binding.repositoryNameText.text = name
+        } else {
+            binding.repositoryNameText.text = ""
+        }
 
         val drawableInt = if (item.isDownloaded)
             R.drawable.ic_baseline_delete_outline_24
@@ -92,7 +98,7 @@ class PluginAdapter(
         binding.actionButton.setImageResource(drawableInt)
 
         binding.actionButton.setOnClickListener {
-            iconClickCallback.invoke(item.plugin)
+            iconClickCallback.invoke(item.pluginWrapper)
         }
         itemView.setOnClickListener {
             if (isLocal) return@setOnClickListener
@@ -204,7 +210,7 @@ class PluginAdapter(
     companion object {
         // A high count as we can render in the entire list as the same time
         val sharedPool =
-            RecyclerView.RecycledViewPool().apply { this.setMaxRecycledViews(CONTENT, 15) }
+            newSharedPool { setMaxRecycledViews(CONTENT, 15) }
 
         private tailrec fun findClosestBase2(target: Int, current: Int = 16, max: Int = 512): Int {
             if (current >= max) return max

@@ -15,7 +15,7 @@ import com.lagradost.cloudstream3.mvvm.logError
 import com.lagradost.cloudstream3.utils.BackupUtils
 import com.lagradost.cloudstream3.utils.Coroutines.ioSafe
 import com.lagradost.cloudstream3.utils.Coroutines.main
-import com.lagradost.cloudstream3.utils.DataStore
+import com.lagradost.cloudstream3.mapper
 import com.lagradost.cloudstream3.utils.DataStore.getDefaultSharedPrefs
 import com.lagradost.cloudstream3.utils.DataStore.getSyncMtimes
 import com.lagradost.cloudstream3.utils.DataStore.putSyncMtimes
@@ -210,7 +210,7 @@ object CloudSyncManager {
     private fun applyRemote(payload: String, remoteTimestamps: Map<String, Long>) {
         val context = appContext ?: return
         try {
-            val remote = DataStore.mapper.readValue(payload, BackupUtils.BackupFile::class.java)
+            val remote = mapper.readValue(payload, BackupUtils.BackupFile::class.java)
             val local = BackupUtils.getBackup(context)
             val localTimestamps = context.getSyncMtimes()
 
@@ -243,7 +243,7 @@ object CloudSyncManager {
     private fun parseTimestamps(json: String?): Map<String, Long> {
         if (json.isNullOrEmpty()) return emptyMap()
         return try {
-            DataStore.mapper.readValue(json, object : TypeReference<Map<String, Long>>() {})
+            mapper.readValue(json, object : TypeReference<Map<String, Long>>() {})
         } catch (e: Exception) {
             logError(e)
             emptyMap()
@@ -256,8 +256,8 @@ object CloudSyncManager {
         lastUploadRequestMs = System.currentTimeMillis()
         try {
             val file = BackupUtils.getBackup(context) ?: return
-            val json = DataStore.mapper.writeValueAsString(file)
-            val timestampsJson = DataStore.mapper.writeValueAsString(context.getSyncMtimes())
+            val json = mapper.writeValueAsString(file)
+            val timestampsJson = mapper.writeValueAsString(context.getSyncMtimes())
             val version = System.currentTimeMillis()
             val document = mapOf(
                 FIELD_DEVICE to deviceId,

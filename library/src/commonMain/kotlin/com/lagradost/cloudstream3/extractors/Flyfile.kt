@@ -1,21 +1,20 @@
 package com.lagradost.cloudstream3.extractors
 
-import com.fasterxml.jackson.annotation.JsonProperty
+import com.lagradost.cloudstream3.Prerelease
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.newExtractorLink
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-class Streamix(): Streamup() {
-    override val name: String = "Streamix"
-    override val mainUrl = "https://streamix.so"
-}
-
-open class Streamup() : ExtractorApi() {
-    override val name: String = "Streamup"
-    override val mainUrl: String = "https://strmup.to"
+@Prerelease
+open class Flyfile : ExtractorApi() {
+    override val name: String = "FlyFile"
+    override val mainUrl: String = "https://flyfile.app"
+    open val apiUrl: String = "https://api.flyfile.app"
     override val requiresReferer: Boolean = false
 
     override suspend fun getUrl(
@@ -24,26 +23,26 @@ open class Streamup() : ExtractorApi() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
-        val fileCode = url.substringAfterLast("/")
-        val fileInfo = app.get("$mainUrl/ajax/stream?filecode=$fileCode")
-            .parsed<StreamUpFileInfo>()
+        val videoId = url.substringAfterLast("/")
+        val videoInfo = app.get("$apiUrl/api/streaming/assign/$videoId")
+            .parsed<StreamInfo>()
 
+        val streamUrl = "${videoInfo.url}/hls/${videoInfo.token}/master.m3u8"
         callback.invoke(
             newExtractorLink(
                 source = name,
                 name = name,
-                url = fileInfo.streamingUrl,
+                url = streamUrl,
                 type = ExtractorLinkType.M3U8
             )
         )
     }
 
-    private data class StreamUpFileInfo(
-        val title: String,
-        val thumbnail: String,
-        @JsonProperty("streaming_url")
-        val streamingUrl: String,
-        // subtitles seems to always be empty
-        // val subtitles: List<Any>
+    @Serializable
+    private data class StreamInfo(
+        @SerialName("url")
+        val url: String,
+        @SerialName("token")
+        val token: String
     )
 }

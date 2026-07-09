@@ -72,7 +72,6 @@ import com.lagradost.cloudstream3.syncproviders.providers.Kitsu
 import com.lagradost.cloudstream3.ui.APIRepository
 import com.lagradost.cloudstream3.ui.WatchType
 import com.lagradost.cloudstream3.ui.player.GeneratorPlayer
-import com.lagradost.cloudstream3.ui.player.IGenerator
 import com.lagradost.cloudstream3.ui.player.LOADTYPE_ALL
 import com.lagradost.cloudstream3.ui.player.LOADTYPE_CHROMECAST
 import com.lagradost.cloudstream3.ui.player.LOADTYPE_INAPP
@@ -84,6 +83,7 @@ import com.lagradost.cloudstream3.utils.AppContextUtils.getNameFull
 import com.lagradost.cloudstream3.utils.AppContextUtils.isConnectedToChromecast
 import com.lagradost.cloudstream3.utils.AppContextUtils.setDefaultFocus
 import com.lagradost.cloudstream3.utils.AppContextUtils.sortSubs
+import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import com.lagradost.cloudstream3.utils.CastHelper.startCast
 import com.lagradost.cloudstream3.utils.Coroutines.ioSafe
 import com.lagradost.cloudstream3.utils.Coroutines.ioWork
@@ -320,11 +320,12 @@ fun LoadResponse.toResultData(repo: APIRepository): ResultData {
                 TvType.Live -> R.string.live_singular
                 TvType.Others -> R.string.other_singular
                 TvType.NSFW -> R.string.nsfw_singular
-                TvType.Music -> R.string.music_singlar
+                TvType.Music -> R.string.music_singular
                 TvType.AudioBook -> R.string.audio_book_singular
-                TvType.CustomMedia -> R.string.custom_media_singluar
-                TvType.Audio -> R.string.audio_singluar
-                TvType.Podcast -> R.string.podcast_singluar
+                TvType.CustomMedia -> R.string.custom_media_singular
+                TvType.Audio -> R.string.audio_singular
+                TvType.Podcast -> R.string.podcast_singular
+                TvType.Video -> R.string.video_singular
             }
         ),
         yearText = txt(year?.toString()),
@@ -449,7 +450,7 @@ fun SelectPopup.getOptions(context: Context): List<String> {
 }
 
 data class ExtractedTrailerData(
-    var mirros: List<Pair<ExtractorLink,String>>,//Pair of extracted trailer link and original trailer link
+    var mirros: List<Pair<ExtractorLink, String>>,//Pair of extracted trailer link and original trailer link
     var subtitles: List<SubtitleFile> = emptyList(),
 )
 
@@ -479,8 +480,8 @@ class ResultViewModel2 : ViewModel() {
     private var currentShowFillers: Boolean = false
     var currentRepo: APIRepository? = null
     private var currentId: Int? = null
-    private var fillers: Map<Int, Boolean> = emptyMap()
-    private var generator: IGenerator? = null
+    private var fillers: HashSet<Int> = hashSetOf()
+    private var generator: RepoLinkGenerator? = null
     private var preferDubStatus: DubStatus? = null
     private var preferStartEpisode: Int? = null
     private var preferStartSeason: Int? = null
@@ -1293,9 +1294,10 @@ class ResultViewModel2 : ViewModel() {
                     subs += sub
                     updatePage()
                 },
-                isCasting = isCasting
+                isCasting = isCasting,
+                offset = 0
             )
-        } catch (e: CancellationException) {
+        } catch (_: CancellationException) {
             // Do nothing
         } catch (e: Exception) {
             logError(e)
@@ -1324,7 +1326,7 @@ class ResultViewModel2 : ViewModel() {
         episodeIds: Array<String>,
         watchState: VideoWatchState,
     ): List<String> {
-        val watchStateString = DataStore.mapper.writeValueAsString(watchState)
+        val watchStateString = watchState.toJson()
         val changedKeys = ArrayList<String>()
         episodeIds.forEach {
             if (getVideoWatchState(it.toInt()) != watchState) {
@@ -1545,26 +1547,24 @@ class ResultViewModel2 : ViewModel() {
 
             ACTION_PLAY_EPISODE_IN_PLAYER -> {
                 val list = HashMap<String, String>(currentResponse?.syncData ?: emptyMap())
+                val generator = generator ?: return
 
-                generator?.also {
-                    it.getAll() // I know kinda shit to iterate all, but it is 100% sure to work
-                        ?.indexOfFirst { value -> value is ResultEpisode && value.id == click.data.id }
-                        ?.let { index ->
-                            if (index >= 0)
-                                it.goto(index)
-                        }
-                }
+                // I know kinda shit to iterate all, but it is 100% sure to work
+                val index = generator.videos.indexOfFirst { value -> value.id == click.data.id }
+
                 if (currentResponse?.type == TvType.CustomMedia) {
-                    generator?.generateLinks(
+                    generator.generateLinks(
+                        offset = index,
                         clearCache = true,
-                        LOADTYPE_ALL,
+                        isCasting = false,
+                        sourceTypes = LOADTYPE_ALL,
                         callback = {},
                         subtitleCallback = {})
                 } else {
                     activity?.navigate(
                         R.id.global_to_navigation_player,
                         GeneratorPlayer.newInstance(
-                            generator ?: return, list
+                            generator, index,list
                         )
                     )
                 }
@@ -1690,14 +1690,13 @@ class ResultViewModel2 : ViewModel() {
                 }
 
                 val realRecommendations = ArrayList<SearchResponse>()
-                val apiNames = synchronized(apis) {
-                    apis.filter {
-                        it.name.contains("gogoanime", true) ||
-                                it.name.contains("9anime", true)
-                    }.map {
-                        it.name
-                    }
+                val apiNames = apis.filter {
+                    it.name.contains("gogoanime", true) ||
+                        it.name.contains("9anime", true)
+                }.map {
+                    it.name
                 }
+
                 meta.recommendations?.forEach { rec ->
                     apiNames.forEach { name ->
                         realRecommendations.add(rec.copy(apiName = name))
@@ -1836,11 +1835,10 @@ class ResultViewModel2 : ViewModel() {
     }
 
 
-    private suspend fun updateFillers(name: String) {
-        fillers =
-            ioWorkSafe {
-                FillerEpisodeCheck.getFillerEpisodes(name)
-            } ?: emptyMap()
+    private suspend fun updateFillers(data: LoadResponse) {
+        fillers = ioWorkSafe {
+            FillerEpisodeCheck.getFillerEpisodes(data)
+        } ?: hashSetOf()
     }
 
     fun changeDubStatus(status: DubStatus) {
@@ -2177,8 +2175,8 @@ class ResultViewModel2 : ViewModel() {
     ) {
         _episodes.postValue(Resource.Loading())
 
-        if (updateFillers && loadResponse is AnimeLoadResponse) {
-            updateFillers(loadResponse.name)
+        if (updateFillers) {
+            updateFillers(loadResponse)
         }
 
         val allEpisodes = when (loadResponse) {
@@ -2219,7 +2217,7 @@ class ResultViewModel2 : ViewModel() {
                                     index,
                                     i.score,
                                     i.description,
-                                    fillers.getOrDefault(episode, false),
+                                    fillers.contains(episode),
                                     loadResponse.type,
                                     mainId,
                                     totalIndex,
@@ -2459,26 +2457,34 @@ class ResultViewModel2 : ViewModel() {
             loadResponse.trailers.windowed(limit, limit, true).takeWhile { list ->
                 list.amap { trailerData ->
                     try {
-                        val links = arrayListOf<Pair<ExtractorLink,String>>()
+                        val links = arrayListOf<Pair<ExtractorLink, String>>()
                         val subs = arrayListOf<SubtitleFile>()
                         if (!loadExtractor(
                                 trailerData.extractorUrl,
                                 trailerData.referer,
                                 { subs.add(it) },
-                                { links.add(Pair(it,trailerData.extractorUrl))}) && trailerData.raw
+                                {
+                                    links.add(
+                                        Pair(
+                                            it,
+                                            trailerData.extractorUrl
+                                        )
+                                    )
+                                }) && trailerData.raw
                         ) {
                             arrayListOf(
                                 Pair(
                                     newExtractorLink(
-                                    "",
-                                    "Trailer",
-                                    trailerData.extractorUrl,
-                                    type = INFER_TYPE
-                                ) {
-                                    this.referer = trailerData.referer ?: ""
-                                    this.quality = Qualities.Unknown.value
-                                    this.headers = trailerData.headers
-                                },trailerData.extractorUrl)
+                                        "",
+                                        "Trailer",
+                                        trailerData.extractorUrl,
+                                        type = INFER_TYPE
+                                    ) {
+                                        this.referer = trailerData.referer ?: ""
+                                        this.quality = Qualities.Unknown.value
+                                        this.headers = trailerData.headers
+                                    }, trailerData.extractorUrl
+                                )
                             ) to arrayListOf()
                         } else {
                             links to subs

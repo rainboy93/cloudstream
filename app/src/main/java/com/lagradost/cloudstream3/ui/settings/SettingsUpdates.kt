@@ -54,6 +54,8 @@ class SettingsUpdates : BasePreferenceFragmentCompat() {
     }
 
     private val pathPicker = getChooseFolderLauncher { uri, path ->
+        if(uri == null) return@getChooseFolderLauncher
+
         val context = context ?: CloudStreamApp.context ?: return@getChooseFolderLauncher
         (path ?: uri.toString()).let {
             PreferenceManager.getDefaultSharedPreferences(context).edit {
@@ -63,7 +65,6 @@ class SettingsUpdates : BasePreferenceFragmentCompat() {
         }
     }
 
-    @Suppress("DEPRECATION_ERROR")
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         hideKeyboard()
         setPreferencesFromResource(R.xml.settings_updates, rootKey)
