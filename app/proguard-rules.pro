@@ -52,3 +52,14 @@
 # --- Cloud sync payload (serialized/deserialized reflectively) ---
 -keep class com.lagradost.cloudstream3.utils.BackupUtils$* { *; }
 -keep class com.lagradost.cloudstream3.cloudsync.** { *; }
+
+# --- App-wide Kotlin data classes bound by Jackson ---
+# The app persists state (continue-watching, bookmarks, downloads, settings…) as
+# JSON in SharedPrefs and deserializes it with jackson-module-kotlin, which
+# instantiates each data class via its Kotlin PRIMARY CONSTRUCTOR using
+# kotlin.Metadata. R8 obfuscation renames members and invalidates that metadata,
+# so tryParseJson returns null at runtime (e.g. empty continue-watching list).
+# Keep our own classes (names + members) intact so the metadata stays valid.
+# Third-party dependencies (media3, firebase, okhttp…) are still shrunk/obfuscated.
+-keep class com.lagradost.cloudstream3.** { *; }
+-keepparameternames

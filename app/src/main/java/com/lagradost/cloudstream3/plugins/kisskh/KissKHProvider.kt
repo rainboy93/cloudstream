@@ -1,5 +1,7 @@
 package com.lagradost.cloudstream3.plugins.kisskh
 
+import androidx.annotation.Keep
+
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.HomePageList
 import com.lagradost.cloudstream3.HomePageResponse
@@ -173,6 +175,7 @@ class KissKHProvider(val plugin: KissKHPlugin) : MainAPI() {
         }
     }
 
+    @Keep
     data class DramaItem(
         @JsonProperty("id") val id: Int,
         @JsonProperty("title") val title: String?,
@@ -181,6 +184,7 @@ class KissKHProvider(val plugin: KissKHPlugin) : MainAPI() {
         @JsonProperty("label") val label: String?,
     )
 
+    @Keep
     data class DramaDetail(
         @JsonProperty("id") val id: Int,
         @JsonProperty("title") val title: String,
@@ -192,17 +196,20 @@ class KissKHProvider(val plugin: KissKHPlugin) : MainAPI() {
         @JsonProperty("episodes") val episodes: List<EpisodeItem>?,
     )
 
+    @Keep
     data class EpisodeItem(
         @JsonProperty("id") val id: Int,
         @JsonProperty("number") val number: Double,
         @JsonProperty("sub") val sub: Int?,
     )
 
+    @Keep
     data class EpisodeResponse(
         @JsonProperty("Video") val video: String?,
         @JsonProperty("ThirdParty") val thirdParty: String?,
     )
 
+    @Keep
     data class SubtitleItem(
         @JsonProperty("src") val src: String,
         @JsonProperty("label") val label: String,

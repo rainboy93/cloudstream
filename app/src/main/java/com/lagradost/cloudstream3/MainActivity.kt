@@ -91,6 +91,7 @@ import com.lagradost.cloudstream3.plugins.PluginManager
 import com.lagradost.cloudstream3.plugins.PluginManager.___DO_NOT_CALL_FROM_A_PLUGIN_loadAllOnlinePlugins
 import com.lagradost.cloudstream3.plugins.PluginManager.loadSinglePlugin
 import com.lagradost.cloudstream3.plugins.kisskh.KissKHPlugin
+import com.lagradost.cloudstream3.plugins.onflix.OnflixPlugin
 import com.lagradost.cloudstream3.plugins.ophim.OPhimPlugin
 import com.lagradost.cloudstream3.plugins.rophim.RoPhimPlugin
 import com.lagradost.cloudstream3.receivers.VideoDownloadRestartReceiver
@@ -182,7 +183,6 @@ import com.lagradost.cloudstream3.utils.setTextHtml
 import com.lagradost.cloudstream3.utils.txt
 import com.lagradost.safefile.SafeFile
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.File
@@ -1351,6 +1351,7 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener, BiometricCa
             OPhimPlugin().load(this)
             RoPhimPlugin().load(this)
             KissKHPlugin().load(this)
+            OnflixPlugin().load(this)
 
             if (DataStoreHelper.currentHomePage == null) {
                 DataStoreHelper.currentHomePage = "Ổ Phim"

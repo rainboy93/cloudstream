@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.Application
 import android.content.Context
 import android.os.Bundle
+import androidx.annotation.Keep
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.fasterxml.jackson.core.type.TypeReference
@@ -11,11 +12,11 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.lagradost.cloudstream3.cloudsync.CloudSyncManager.syncNow
+import com.lagradost.cloudstream3.mapper
 import com.lagradost.cloudstream3.mvvm.logError
 import com.lagradost.cloudstream3.utils.BackupUtils
 import com.lagradost.cloudstream3.utils.Coroutines.ioSafe
 import com.lagradost.cloudstream3.utils.Coroutines.main
-import com.lagradost.cloudstream3.mapper
 import com.lagradost.cloudstream3.utils.DataStore.getDefaultSharedPrefs
 import com.lagradost.cloudstream3.utils.DataStore.getSyncMtimes
 import com.lagradost.cloudstream3.utils.DataStore.putSyncMtimes
@@ -51,9 +52,16 @@ object CloudSyncManager {
     private const val FIELD_TIMESTAMPS = "timestamps"
 
     sealed class SyncStatus {
+        @Keep
         data object LoggedOut : SyncStatus()
+
+        @Keep
         data object Syncing : SyncStatus()
+
+        @Keep
         data class Synced(val timeMs: Long) : SyncStatus()
+
+        @Keep
         data class Error(val message: String) : SyncStatus()
     }
 

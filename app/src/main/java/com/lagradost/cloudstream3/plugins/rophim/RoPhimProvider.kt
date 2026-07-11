@@ -1,5 +1,7 @@
 package com.lagradost.cloudstream3.plugins.rophim
 
+import androidx.annotation.Keep
+
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.Actor
 import com.lagradost.cloudstream3.HomePageList
@@ -177,14 +179,17 @@ class RoPhimProvider(val plugin: RoPhimPlugin) : MainAPI() {
         return true
     }
 
+    @Keep
     data class ListResponse(
         @JsonProperty("data") val data: ListDataResponse,
     )
 
+    @Keep
     data class ListDataResponse(
         @JsonProperty("items") val items: List<MoviesResponse>,
     )
 
+    @Keep
     data class MoviesResponse(
         @JsonProperty("name") val name: String,
         @JsonProperty("slug") val slug: String,
@@ -192,11 +197,13 @@ class RoPhimProvider(val plugin: RoPhimPlugin) : MainAPI() {
         @JsonProperty("poster_url") val posterUrl: String,
     )
 
+    @Keep
     data class MovieResponse(
         @JsonProperty("movie") val movie: MovieDetailResponse,
         @JsonProperty("episodes") val episodes: List<MovieEpisodeResponse>,
     )
 
+    @Keep
     data class MovieDetailResponse(
         @JsonProperty("name") val name: String,
         @JsonProperty("slug") val slug: String,
@@ -210,16 +217,19 @@ class RoPhimProvider(val plugin: RoPhimPlugin) : MainAPI() {
         @JsonProperty("category") val categories: List<MovieTaxonomyResponse>,
     )
 
+    @Keep
     data class MovieTaxonomyResponse(
         @JsonProperty("name") val name: String,
         @JsonProperty("slug") val slug: String,
     )
 
+    @Keep
     data class MovieEpisodeResponse(
         @JsonProperty("server_name") val serverName: String,
         @JsonProperty("server_data") val serverData: List<MovieEpisodeDataResponse>,
     )
 
+    @Keep
     data class MovieEpisodeDataResponse(
         @JsonProperty("name") val name: String,
         @JsonProperty("slug") val slug: String,
@@ -228,6 +238,7 @@ class RoPhimProvider(val plugin: RoPhimPlugin) : MainAPI() {
         @JsonProperty("link_embed") val linkEmbed: String,
     )
 
+    @Keep
     data class MappedData(
         val name: String,
         val slug: String,
@@ -237,6 +248,7 @@ class RoPhimProvider(val plugin: RoPhimPlugin) : MainAPI() {
         val linkEmbed: String,
     )
 
+    @Keep
     data class MappedEpisode(
         val name: String,
         val slug: String,
@@ -244,6 +256,7 @@ class RoPhimProvider(val plugin: RoPhimPlugin) : MainAPI() {
         val episodes: MutableList<MappedEpisodeItem> = mutableListOf(),
     )
 
+    @Keep
     data class MappedEpisodeItem(
         val server: String,
         val linkM3u8: String,

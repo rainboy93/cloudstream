@@ -5,6 +5,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.Keep
 import androidx.annotation.WorkerThread
 import androidx.core.net.toUri
 import androidx.fragment.app.FragmentActivity
@@ -28,6 +29,7 @@ import com.lagradost.cloudstream3.utils.DataStore.getDefaultSharedPrefs
 import com.lagradost.cloudstream3.utils.DataStore.getSharedPrefs
 import com.lagradost.cloudstream3.utils.UIHelper.checkWrite
 import com.lagradost.cloudstream3.utils.UIHelper.requestRW
+import com.lagradost.cloudstream3.utils.downloader.DownloadFileManagement.getBasePath
 import com.lagradost.cloudstream3.utils.downloader.DownloadObjects
 import com.lagradost.cloudstream3.utils.downloader.DownloadQueueManager.QUEUE_KEY
 import com.lagradost.cloudstream3.utils.downloader.VideoDownloadManager.KEY_DOWNLOAD_INFO
@@ -121,6 +123,7 @@ object BackupUtils {
 
     // Kinda hack, but I couldn't think of a better way
     @Serializable
+    @Keep
     data class BackupVars(
         @JsonProperty("_Bool") @SerialName("_Bool") val bool: Map<String, Boolean>?,
         @JsonProperty("_Int") @SerialName("_Int") val int: Map<String, Int>?,
@@ -131,6 +134,7 @@ object BackupUtils {
     )
 
     @Serializable
+    @Keep
     data class BackupFile(
         @JsonProperty("datastore") @SerialName("datastore") val datastore: BackupVars,
         @JsonProperty("settings") @SerialName("settings") val settings: BackupVars,
