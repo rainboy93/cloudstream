@@ -110,10 +110,12 @@ class OPhimProvider(val plugin: OPhimPlugin) : MainAPI() {
             if (type == "series") {
                 val episodes = movieEpisodes.mapNotNull { episode ->
                     val dataUrl = "${url}@@@${episode.slug}"
+                    val episodeNumber = episodeNumberOf(episode.name)
                     newEpisode(
                         url = dataUrl,
                         initializer = {
                             name = episode.name
+                            this.episode = episodeNumber
                             posterUrl = el.getImageUrl(movie.posterUrl)
                             description = episode.filename
                         }
@@ -297,6 +299,10 @@ class OPhimProvider(val plugin: OPhimPlugin) : MainAPI() {
         return mutableListOf<SearchResponse>()
     }
 
+    /** Extracts the episode's numeric index from names like "1", "Tập 10", "Episode 3". */
+    private fun episodeNumberOf(name: String?): Int? =
+        name?.let { Regex("\\d+").find(it)?.value?.toIntOrNull() }
+
     private suspend fun mapEpisodesResponse(episodes: List<MovieEpisodeResponse>): List<MappedEpisode> {
         return episodes
             .flatMap { episode ->
@@ -332,6 +338,6 @@ class OPhimProvider(val plugin: OPhimPlugin) : MainAPI() {
                 accumulator
             }
             .values
-            .sortedBy { it.name }
+            .sortedBy { episodeNumberOf(it.name) ?: Int.MAX_VALUE }
     }
 }

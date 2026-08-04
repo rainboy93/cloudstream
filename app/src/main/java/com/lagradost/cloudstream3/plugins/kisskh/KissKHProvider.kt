@@ -96,6 +96,7 @@ class KissKHProvider(val plugin: KissKHPlugin) : MainAPI() {
                     url = "${ep.id}",
                     initializer = {
                         name = "Episode ${ep.number.toInt()}"
+                        this.episode = ep.number.toInt()
                     },
                     fix = false
                 )
