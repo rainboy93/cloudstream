@@ -111,11 +111,11 @@ class OnflixProvider(val plugin: OnflixPlugin) : MainAPI() {
         }
 
         val episodes = grouped.entries
-            .sortedBy { it.key.toIntOrNull() ?: Int.MAX_VALUE }
+            .sortedBy { episodeNumberOf(it.key) ?: Int.MAX_VALUE }
             .mapIndexed { index, entry ->
                 newEpisode(entry.value.toJson()) {
                     this.name = entry.value.firstOrNull()?.name ?: "Tập ${index + 1}"
-                    this.episode = entry.key.toIntOrNull() ?: (index + 1)
+                    this.episode = episodeNumberOf(entry.key) ?: (index + 1)
                     this.posterUrl = poster
                 }
             }
@@ -165,6 +165,10 @@ class OnflixProvider(val plugin: OnflixPlugin) : MainAPI() {
 
         return found
     }
+
+    /** Extracts the episode's numeric index from values like "1", "Tập 10", "tap-3". */
+    private fun episodeNumberOf(text: String?): Int? =
+        text?.let { Regex("\\d+").find(it)?.value?.toIntOrNull() }
 
     private fun cleanTitle(raw: String): String {
         return raw

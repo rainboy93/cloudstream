@@ -120,8 +120,8 @@ android {
         applicationId = "com.lagradost.cloudstream3"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 8
-        versionName = "1.0.4"
+        versionCode = 13
+        versionName = "1.0.8"
 
         manifestPlaceholders["target_sdk_version"] = libs.versions.targetSdk.get()
 
@@ -159,7 +159,7 @@ android {
     buildTypes {
         release {
             isDebuggable = false
-            isMinifyEnabled = true
+            isMinifyEnabled = false
             isShrinkResources = false
             signingConfig = signingConfigs.getByName("release")
             proguardFiles(

@@ -93,6 +93,7 @@ import com.lagradost.cloudstream3.plugins.PluginManager.loadSinglePlugin
 import com.lagradost.cloudstream3.plugins.kisskh.KissKHPlugin
 import com.lagradost.cloudstream3.plugins.onflix.OnflixPlugin
 import com.lagradost.cloudstream3.plugins.ophim.OPhimPlugin
+import com.lagradost.cloudstream3.plugins.phim4k.Phim4kPlugin
 import com.lagradost.cloudstream3.plugins.rophim.RoPhimPlugin
 import com.lagradost.cloudstream3.receivers.VideoDownloadRestartReceiver
 import com.lagradost.cloudstream3.services.SubscriptionWorkManager
@@ -1352,6 +1353,7 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener, BiometricCa
             RoPhimPlugin().load(this)
             KissKHPlugin().load(this)
             OnflixPlugin().load(this)
+            Phim4kPlugin().load(this)
 
             if (DataStoreHelper.currentHomePage == null) {
                 DataStoreHelper.currentHomePage = "Ổ Phim"

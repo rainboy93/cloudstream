@@ -55,7 +55,7 @@ class RoPhimProvider(val plugin: RoPhimPlugin) : MainAPI() {
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
-        return this.getMoviesList("${mainUrl}/v1/api/tim-kiem?keyword=${query}", 1)!!
+        return this.getMoviesList("${mainUrl}/v1/api/tim-kiem?keyword=${query}", 1) ?: emptyList()
     }
 
     override suspend fun getMainPage(
@@ -67,7 +67,7 @@ class RoPhimProvider(val plugin: RoPhimPlugin) : MainAPI() {
 
         val homePageList = HomePageList(
             name = name,
-            list = this.getMoviesList(request.data, page, horizontal)!!,
+            list = this.getMoviesList(request.data, page, horizontal) ?: emptyList(),
             isHorizontalImages = horizontal
         )
 
@@ -110,10 +110,12 @@ class RoPhimProvider(val plugin: RoPhimPlugin) : MainAPI() {
             if (type == "series") {
                 val episodes = movieEpisodes.mapNotNull { episode ->
                     val dataUrl = "${url}@@@${episode.slug}"
+                    val episodeNumber = episodeNumberOf(episode.name)
                     newEpisode(
                         url = dataUrl,
                         initializer = {
                             name = episode.name
+                            this.episode = episodeNumber
                             posterUrl = el.getImageUrl(movie.posterUrl)
                             description = episode.filename
                         }
@@ -150,7 +152,7 @@ class RoPhimProvider(val plugin: RoPhimPlugin) : MainAPI() {
         val slug = data.split("@@@")[1]
 
         val text = request(url).text
-        val response = tryParseJson<MovieResponse>(text)!!
+        val response = tryParseJson<MovieResponse>(text) ?: return false
 
         val episodes = this.mapEpisodesResponse(response.episodes)
         val episodeItem = episodes.find { episode -> episode.slug == slug }
@@ -297,6 +299,10 @@ class RoPhimProvider(val plugin: RoPhimPlugin) : MainAPI() {
         return mutableListOf<SearchResponse>()
     }
 
+    /** Extracts the episode's numeric index from names like "1", "Tập 10", "Episode 3". */
+    private fun episodeNumberOf(name: String?): Int? =
+        name?.let { Regex("\\d+").find(it)?.value?.toIntOrNull() }
+
     private suspend fun mapEpisodesResponse(episodes: List<MovieEpisodeResponse>): List<MappedEpisode> {
         return episodes
             .flatMap { episode ->
@@ -332,6 +338,6 @@ class RoPhimProvider(val plugin: RoPhimPlugin) : MainAPI() {
                 accumulator
             }
             .values
-            .sortedBy { it.name }
+            .sortedBy { episodeNumberOf(it.name) ?: Int.MAX_VALUE }
     }
 }

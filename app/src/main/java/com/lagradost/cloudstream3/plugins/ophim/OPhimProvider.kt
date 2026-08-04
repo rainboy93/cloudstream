@@ -36,7 +36,7 @@ class OPhimProvider(val plugin: OPhimPlugin) : MainAPI() {
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
     override val mainPage = mainPageOf(
-        Pair("${mainUrl}/v1/api/danh-sach/phim-moi-cap-nhat", "Phim Mới/vertical"),
+        Pair("${mainUrl}/danh-sach/phim-moi-cap-nhat", "Phim Mới/vertical"),
         Pair("${mainUrl}/v1/api/danh-sach/phim-le", "Phim Lẻ/horizontal"),
         Pair("${mainUrl}/v1/api/quoc-gia/han-quoc", "Phim Hàn Quốc/vertical"),
         Pair("${mainUrl}/v1/api/danh-sach/hoat-hinh", "Phim Hoạt Hình/vertical"),
@@ -48,6 +48,7 @@ class OPhimProvider(val plugin: OPhimPlugin) : MainAPI() {
     override val hasMainPage = true
     override val hasDownloadSupport = true
 
+    var imageDomain = "https://img.ophim.live"
     var mainUrlImage = "https://img.ophim.live/uploads/movies"
 
     private suspend fun request(url: String): NiceResponse {
@@ -55,7 +56,7 @@ class OPhimProvider(val plugin: OPhimPlugin) : MainAPI() {
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
-        return this.getMoviesList("${mainUrl}/v1/api/tim-kiem?keyword=${query}", 1)!!
+        return this.getMoviesList("${mainUrl}/v1/api/tim-kiem?keyword=${query}", 1) ?: emptyList()
     }
 
     override suspend fun getMainPage(
@@ -67,7 +68,7 @@ class OPhimProvider(val plugin: OPhimPlugin) : MainAPI() {
 
         val homePageList = HomePageList(
             name = name,
-            list = this.getMoviesList(request.data, page, horizontal)!!,
+            list = this.getMoviesList(request.data, page, horizontal) ?: emptyList(),
             isHorizontalImages = horizontal
         )
 
@@ -110,10 +111,12 @@ class OPhimProvider(val plugin: OPhimPlugin) : MainAPI() {
             if (type == "series") {
                 val episodes = movieEpisodes.mapNotNull { episode ->
                     val dataUrl = "${url}@@@${episode.slug}"
+                    val episodeNumber = episodeNumberOf(episode.name)
                     newEpisode(
                         url = dataUrl,
                         initializer = {
                             name = episode.name
+                            this.episode = episodeNumber
                             posterUrl = el.getImageUrl(movie.posterUrl)
                             description = episode.filename
                         }
@@ -150,7 +153,7 @@ class OPhimProvider(val plugin: OPhimPlugin) : MainAPI() {
         val slug = data.split("@@@")[1]
 
         val text = request(url).text
-        val response = tryParseJson<MovieResponse>(text)!!
+        val response = tryParseJson<MovieResponse>(text) ?: return false
 
         val episodes = this.mapEpisodesResponse(response.episodes)
         val episodeItem = episodes.find { episode -> episode.slug == slug }
@@ -186,6 +189,11 @@ class OPhimProvider(val plugin: OPhimPlugin) : MainAPI() {
 
     @Keep
     data class ListDataResponse(
+        @JsonProperty("items") val items: List<MoviesResponse>,
+    )
+
+    @Keep
+    data class RootItemsResponse(
         @JsonProperty("items") val items: List<MoviesResponse>,
     )
 
@@ -264,8 +272,12 @@ class OPhimProvider(val plugin: OPhimPlugin) : MainAPI() {
     )
 
     private fun getImageUrl(url: String): String {
+        if (url.isEmpty()) return url
         if (url.contains("http")) return url
-        return if (url.startsWith("/")) "${mainUrlImage}${url}" else "${mainUrlImage}/${url}"
+        val path = url.trimStart('/')
+        // v1 endpoints already include the "uploads/movies/..." prefix, while some
+        // endpoints return only a bare filename. Prepend the right base for each.
+        return if (path.startsWith("uploads/")) "${imageDomain}/${path}" else "${mainUrlImage}/${path}"
     }
 
     private suspend fun getMoviesList(
@@ -282,20 +294,27 @@ class OPhimProvider(val plugin: OPhimPlugin) : MainAPI() {
             }
 
             val text = request(newUrl).text
-            val response = tryParseJson<ListResponse>(text)
+            // Most endpoints nest items under "data", but /danh-sach/phim-moi-cap-nhat
+            // returns them at the top level, so fall back to that shape.
+            val items = tryParseJson<ListResponse>(text)?.data?.items
+                ?: tryParseJson<RootItemsResponse>(text)?.items
 
-            return response?.data?.items?.map { movie ->
+            return items?.map { movie ->
                 val movieUrl = "${mainUrl}/phim/${movie.slug}"
                 newMovieSearchResponse(movie.name, movieUrl, TvType.Movie, true) {
                     this.posterUrl =
                         if (horizontal) el.getImageUrl(movie.posterUrl) else el.getImageUrl(movie.thumbUrl)
                 }
-            }
+            } ?: mutableListOf()
         } catch (error: Exception) {
         }
 
         return mutableListOf<SearchResponse>()
     }
+
+    /** Extracts the episode's numeric index from names like "1", "Tập 10", "Episode 3". */
+    private fun episodeNumberOf(name: String?): Int? =
+        name?.let { Regex("\\d+").find(it)?.value?.toIntOrNull() }
 
     private suspend fun mapEpisodesResponse(episodes: List<MovieEpisodeResponse>): List<MappedEpisode> {
         return episodes
@@ -332,6 +351,6 @@ class OPhimProvider(val plugin: OPhimPlugin) : MainAPI() {
                 accumulator
             }
             .values
-            .sortedBy { it.name }
+            .sortedBy { episodeNumberOf(it.name) ?: Int.MAX_VALUE }
     }
 }
