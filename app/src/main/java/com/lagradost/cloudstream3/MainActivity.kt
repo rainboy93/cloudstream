@@ -90,11 +90,10 @@ import com.lagradost.cloudstream3.network.initClient
 import com.lagradost.cloudstream3.plugins.PluginManager
 import com.lagradost.cloudstream3.plugins.PluginManager.___DO_NOT_CALL_FROM_A_PLUGIN_loadAllOnlinePlugins
 import com.lagradost.cloudstream3.plugins.PluginManager.loadSinglePlugin
-import com.lagradost.cloudstream3.plugins.kisskh.KissKHPlugin
 import com.lagradost.cloudstream3.plugins.onflix.OnflixPlugin
 import com.lagradost.cloudstream3.plugins.ophim.OPhimPlugin
-import com.lagradost.cloudstream3.plugins.phim4k.Phim4kPlugin
 import com.lagradost.cloudstream3.plugins.rophim.RoPhimPlugin
+import com.lagradost.cloudstream3.plugins.vieflix.VieFlixPlugin
 import com.lagradost.cloudstream3.receivers.VideoDownloadRestartReceiver
 import com.lagradost.cloudstream3.services.SubscriptionWorkManager
 import com.lagradost.cloudstream3.syncproviders.AccountManager
@@ -1351,9 +1350,8 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener, BiometricCa
             // Load built-in plugins
             OPhimPlugin().load(this)
             RoPhimPlugin().load(this)
-            KissKHPlugin().load(this)
             OnflixPlugin().load(this)
-            Phim4kPlugin().load(this)
+            VieFlixPlugin().load(this)
 
             if (DataStoreHelper.currentHomePage == null) {
                 DataStoreHelper.currentHomePage = "Ổ Phim"

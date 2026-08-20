@@ -90,7 +90,6 @@ import com.lagradost.cloudstream3.utils.Coroutines.ioWork
 import com.lagradost.cloudstream3.utils.Coroutines.ioWorkSafe
 import com.lagradost.cloudstream3.utils.Coroutines.main
 import com.lagradost.cloudstream3.utils.DOWNLOAD_HEADER_CACHE
-import com.lagradost.cloudstream3.utils.DataStore
 import com.lagradost.cloudstream3.utils.DataStore.editor
 import com.lagradost.cloudstream3.utils.DataStore.getFolderName
 import com.lagradost.cloudstream3.utils.DataStore.recordSyncMtimes
@@ -375,8 +374,11 @@ fun LoadResponse.getId(): Int {
 }
 
 private fun getLoadResponseIdFromUrl(url: String, apiName: String): Int {
-    return url.replace(getApiFromNameNull(apiName)?.mainUrl ?: "", "").replace("/", "")
-        .hashCode()
+    // Namespace the id by apiName so providers that share identical url paths (e.g. several
+    // Vietnamese providers all using /phim/{slug} from the same upstream source) don't collide
+    // and share watch progress, resume state and bookmarks.
+    val path = url.replace(getApiFromNameNull(apiName)?.mainUrl ?: "", "").replace("/", "")
+    return "$apiName|$path".hashCode()
 }
 
 data class LinkProgress(
